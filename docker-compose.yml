@@ -1,0 +1,12 @@
+version: '3.9'  # 指定 Docker Compose 使用的版本，这里使用的是较新版本
+
+services:
+  vue-app:  # 定义一个服务，名称为 vue-app
+    image: vite-vue3:latest  # ✅ 使用你自定义的镜像，原来是 node:20
+    working_dir: /app  # 容器内部的工作目录，相当于 cd /app
+    volumes:
+      - .:/app  # 挂载当前宿主机目录（.）到容器的 /app，方便代码同步
+    ports:
+      - "8089:5173"  # 把宿主机 8089 端口映射到容器内 Vite 默认的 5173 端口
+    command: npm run dev -- --host # 启动 Vue 项目的开发服务器
+    restart: unless-stopped  # 如果不是手动停止，那就自动重启c
