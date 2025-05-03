@@ -10,4 +10,4 @@ else
 fi
 
 echo "▶ Running in container [$CONTAINER_NAME]: $CMD"
-docker exec -it "$CONTAINER_NAME" sh -c "$CMD"
+docker exec -it "$CONTAINER_NAME" sh -c "$CMD" 

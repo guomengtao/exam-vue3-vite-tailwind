@@ -9,7 +9,7 @@
  * ✅ 若需求变更，只能改具体字段或描述，不得擅自精简结构。
  *
  * ============================================
- * 🧾 页面功能说明：试卷创建表单
+ * 🧾 页面功能说明：试卷模板创建表单
  * ============================================
  * 🔧 功能概述：
  * - 用于教师创建一份试卷模板，支持添加题目、题型、选项、图片、翻数、正确答案
@@ -87,16 +87,35 @@
  * - lsof -i:8089 可检查端口占用情况
  * - 若项目需长期维护，建议将所有经验文档整理入 `docs/dev-notes.md`
  */
- 
+
+<!-- src/views/ExamCreate/index.vue -->
+
+<script setup>
+import { ref } from 'vue'
+import ExamMeta from './ExamMeta.vue'
+import QuestionList from './QuestionList.vue'
+
+const form = ref({
+  title: '',
+  description: ''
+})
+</script>
+
 <template>
-  <div class="p-10 bg-gray-100 min-h-screen flex flex-col items-center justify-center">
-    <h1 class="text-green-500 text-4xl font-bold mb-6">Hello Tailwind!</h1>
-    <button class="px-6 py-3 bg-gradient-to-r from-green-400 via-green-500 to-green-600 text-white rounded-lg shadow-lg hover:from-green-500 hover:to-green-700 transform transition-all duration-300 ease-in-out hover:scale-105">
-      Tailwind 按钮测试111
-    </button>
+  <div class="page-container">
+    <h1>创建试卷模板</h1>
+
+    <ExamMeta v-model:title="form.title" v-model:description="form.description" />
+    
+    <!-- 新增题目列表部分 -->
+    <QuestionList />
   </div>
 </template>
 
-<script setup>
-// 无需 JS 内容，只测试样式
-</script>
+ <style scoped>
+.page-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+}
+</style>
