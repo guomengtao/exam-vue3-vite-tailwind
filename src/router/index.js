@@ -11,6 +11,12 @@ const routes = [
     path: '/exam-template/create',
     name: 'ExamTemplateCreate',
     component: () => import('@/views/ExamTemplateCreate/index.vue')
+  },
+  // 添加图片上传页面的路由
+  {
+    path: '/image-upload',
+    name: 'ImageUploadPage',
+    component: () => import('@/views/ImageUploadPage.vue') // 引入 ImageUploadPage.vue 页面
   }
 ]
 
@@ -20,4 +26,4 @@ const router = createRouter({
   routes
 })
 
-export default router 
+export default router
