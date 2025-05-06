@@ -11,6 +11,8 @@
   "dependencies": {
     "axios": "^0.18.0",
     "cropperjs": "^2.0.0",
+    "express": "^5.1.0",
+    "lucide-vue-next": "^0.507.0",
     "vue": "^3.3.4",
     "vue-cropper": "^1.1.4",
     "vue-cropperjs": "^5.0.0",

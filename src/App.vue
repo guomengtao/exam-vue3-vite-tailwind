@@ -1,25 +1,12 @@
+<!-- src/App.vue -->
 <template>
-  <div class="min-h-screen bg-gray-100">
-    <nav class="bg-white shadow">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
-          <div class="flex">
-            <div class="flex-shrink-0 flex items-center">
-              <router-link to="/" class="text-xl font-bold text-gray-800">
-                考试管理系统
-              </router-link>
-            </div>
-          </div>
-        </div>
-      </div>
-    </nav>
-
-    <main>
-      <router-view></router-view>
-    </main>
-  </div>
+  <router-view />
+  <p>d9999</p>
 </template>
 
 <script setup>
-// 无需额外的 JavaScript 逻辑
 </script>
+
+<style>
+/* Global styles here */
+</style>
