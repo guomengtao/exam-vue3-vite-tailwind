@@ -28,7 +28,9 @@ export default [
         path: 'exam-template',
         name: 'ExamTemplate',
         meta: { title: '试卷模板' },
-        component: EmptyRouterView,
+         // 直接指向试卷模板列表
+         component: EmptyRouterView,
+         redirect: { name: 'ExamTemplateList' }, // ✅ 自动跳到列表页
         children: [
           {
             path: 'create',
@@ -41,6 +43,12 @@ export default [
             name: 'ExamTemplateDetail',
             component: () => import('@/views/admin/ExamTemplate/Detail.vue'),
             meta: { title: '试卷模板详情' },
+          },
+          {
+            path: 'list',
+            name: 'ExamTemplateList',
+            component: () => import('@/views/admin/ExamTemplate/List.vue'),
+            meta: { title: '试卷模板列表' },
           },
         ],
       },
