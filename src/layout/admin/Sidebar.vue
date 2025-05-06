@@ -20,8 +20,8 @@
           <div class="px-4 py-2 text-xs text-gray-500 uppercase tracking-wide">问卷操作</div>
           <ul class="space-y-1 pl-2">
             <SidebarLink icon="Upload" text="导入问卷" to="#" />
-            
-            <!-- ✅ 改回原始写法：新增问卷 -->
+
+            <!-- ✅ 原始写法：新增问卷 -->
             <li>
               <RouterLink
                 to="/admin/exam-template/create"
@@ -33,10 +33,10 @@
               </RouterLink>
             </li>
 
-            <SidebarLink icon="Files" text="问卷模板" to="#" />
+            <SidebarLink icon="Files" text="问卷模板" to="/admin/exam-template/list" />
             <SidebarLink icon="ListChecks" text="问卷管理" to="#" />
             <SidebarLink icon="UserPlus" text="导入用户" to="#" />
-            <SidebarLink icon="UserPlus" text="添加用户" to="#" />
+            <SidebarLink icon="UserPlus" text="添加用户" to="admin/exam-template/create" />
             <SidebarLink icon="Users" text="用户管理" to="#" />
           </ul>
         </li>
@@ -55,48 +55,6 @@
 </template>
 
 <script setup>
-import { Home, Upload, FilePlus, Files, ListChecks, UserPlus, Users, ShieldCheck } from 'lucide-vue-next';
-</script>
-
-<!-- 封装组件仍保留，可以继续用其他 SidebarLink -->
-<script>
-import { defineComponent, h } from 'vue';
-import * as icons from 'lucide-vue-next';
-
-const SidebarLink = defineComponent({
-  props: {
-    to: String,
-    icon: String,
-    text: String,
-  },
-  setup(props) {
-    const IconComponent = icons[props.icon];
-    return () =>
-      h(
-        'li',
-        {},
-        h(
-          'RouterLink',
-          {
-            to: props.to,
-            class:
-              'flex items-center px-4 py-2 text-sm hover:bg-gray-100 rounded transition-colors',
-            activeClass: 'bg-gray-100 font-semibold',
-          },
-          {
-            default: () => [
-              h(IconComponent, {
-                class: 'w-4 h-4 mr-2 text-gray-500',
-              }),
-              props.text,
-            ],
-          }
-        )
-      );
-  },
-});
-
-export default {
-  components: {},
-};
+import { Home, Upload, FilePlus, Files, ListChecks, UserPlus, Users, ShieldCheck } from 'lucide-vue-next'
+import SidebarLink from '@/components/sidebar/SidebarLink.vue' // ✅ 修改为你的实际路径
 </script>
