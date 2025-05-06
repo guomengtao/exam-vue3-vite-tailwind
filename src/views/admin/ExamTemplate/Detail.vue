@@ -2,14 +2,22 @@
 <template>
   <div class="p-6 space-y-6">
     <div class="flex items-center justify-between">
-      <h1 class="text-2xl font-bold">试卷模板详情</h1>
-      <router-link
-        to="/admin/exam-template/list"
-        class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500"
-      >
-        返回列表
-      </router-link>
-    </div>
+  <h1 class="text-2xl font-bold">试卷模板详情</h1>
+  <div class="flex gap-2">
+    <router-link
+      :to="`/admin/exam-template/edit/${result.id}`"
+      class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-500"
+    >
+      编辑
+    </router-link>
+    <router-link
+      to="/admin/exam-template/list"
+      class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500"
+    >
+      返回列表
+    </router-link>
+  </div>
+</div>
 
     <div v-if="loading">正在加载...</div>
     <div v-else-if="error" class="text-red-600">请求失败：{{ error }}</div>
