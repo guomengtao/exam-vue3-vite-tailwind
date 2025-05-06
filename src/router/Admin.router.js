@@ -8,6 +8,11 @@ export default [
     component: () => import('@/views/admin/Login.vue'),
   },
   {
+    path: '/env-test',
+    name: 'EnvTest',
+    component: () => import('@/views/EnvTest.vue'),
+  },
+  {
     path: '/admin',
     name: 'Admin',
     component: () => import('@/layout/admin/AdminLayout.vue'),
@@ -30,6 +35,12 @@ export default [
             name: 'ExamTemplateCreate',
             component: () => import('@/views/admin/ExamTemplateCreate/index.vue'),
             meta: { title: '创建试卷模板' },
+          },
+          {
+            path: 'detail/:id',
+            name: 'ExamTemplateDetail',
+            component: () => import('@/views/admin/ExamTemplate/Detail.vue'),
+            meta: { title: '试卷模板详情' },
           },
         ],
       },
