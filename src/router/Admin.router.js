@@ -45,6 +45,12 @@ export default [
             meta: { title: '试卷模板详情' },
           },
           {
+            path: 'edit/:id',
+            name: 'ExamTemplateEdit',
+            component: () => import('@/views/admin/ExamTemplate/Edit.vue'),
+            meta: { title: '试卷模板编辑' },
+          },
+          {
             path: 'list',
             name: 'ExamTemplateList',
             component: () => import('@/views/admin/ExamTemplate/List.vue'),
