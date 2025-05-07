@@ -61,7 +61,7 @@
             </div>
             <div>
               <label class="block text-sm font-medium">类型</label>
-              <select v-model="q.type" class="form-select w-full">
+              <select v-model="q.type" class="form-select w-full" @change="handleTypeChange(q)">
                 <option value="single">单选题</option>
                 <option value="multi">多选题</option>
                 <option value="judge">判断题</option>
@@ -82,21 +82,24 @@
             <label class="block text-sm font-medium">选项</label>
             <ul class="space-y-1">
               <li
-                v-for="(opt, idx) in q.options"
+                v-for="idx in getOptionCount(q.type)"
                 :key="idx"
                 class="flex items-center gap-2"
               >
                 <input
                   :type="q.type === 'multi' ? 'checkbox' : 'radio'"
                   :name="`answer-${index}`"
-                  :value="opt"
-                  :checked="q.correct_answer.includes(opt)"
-                  @change="updateAnswer(q, opt, $event)"
+                  :value="getOptionValue(q, idx-1)"
+                  :checked="isOptionSelected(q, getOptionValue(q, idx-1))"
+                  @change="updateAnswer(q, getOptionValue(q, idx-1), $event)"
+                  :disabled="q.type === 'judge'"
                 />
                 <input
-                  v-model="q.options[idx]"
+                  v-model="q.options[idx-1]"
                   type="text"
                   class="form-input flex-1"
+                  :placeholder="getOptionPlaceholder(q.type, idx-1)"
+                  :readonly="q.type === 'judge'"
                 />
               </li>
             </ul>
@@ -111,12 +114,10 @@
         >
           保存修改
         </button>
-       </div>
+      </div>
     </form>
   </div>
 </template>
-
-
 
 <style scoped>
 .form-input,
@@ -139,15 +140,124 @@ const route = useRoute()
 const router = useRouter()
 const id = route.query.id || route.params.id
 
-const form = ref({})
+const form = ref({
+  questions: []
+})
 const loading = ref(true)
 const error = ref('')
 
+// 根据题目类型获取选项数量
+function getOptionCount(type) {
+  switch(type) {
+    case 'judge': return 2    // 判断题固定2个选项
+    default: return 4         // 其他类型固定4个选项
+  }
+}
+
+// 获取选项值（确保选项存在）
+function getOptionValue(question, index) {
+  if (!question.options) {
+    question.options = []
+  }
+  while (question.options.length <= index) {
+    // 判断题预置"正确"、"错误"
+    if (question.type === 'judge' && question.options.length < 2) {
+      question.options.push(question.options.length === 0 ? '正确' : '错误')
+    } else {
+      question.options.push('')
+    }
+  }
+  return question.options[index]
+}
+
+// 获取选项占位文本
+function getOptionPlaceholder(type, index) {
+  if (type === 'judge') {
+    return index === 0 ? '正确' : '错误'
+  }
+  return `选项 ${String.fromCharCode(65 + index)}`
+}
+
+// 检查选项是否被选中
+function isOptionSelected(question, option) {
+  if (!option) return false
+  if (question.type === 'multi') {
+    return Array.isArray(question.correct_answer) && 
+           question.correct_answer.includes(option)
+  } else {
+    return question.correct_answer === option
+  }
+}
+
+// 更新答案选择
+function updateAnswer(question, option, event) {
+  if (!option || question.type === 'judge') return
+  
+  if (question.type === 'multi') {
+    if (!Array.isArray(question.correct_answer)) {
+      question.correct_answer = []
+    }
+    if (event.target.checked) {
+      question.correct_answer.push(option)
+    } else {
+      question.correct_answer = question.correct_answer.filter(a => a !== option)
+    }
+  } else {
+    question.correct_answer = option
+  }
+}
+
+// 题目类型变化时重置选项
+function handleTypeChange(question) {
+  const optionCount = getOptionCount(question.type)
+  question.options = question.options || []
+  
+  // 重置选项
+  if (question.type === 'judge') {
+    question.options = ['正确', '错误']
+  } else {
+    // 保持原有选项，不足的补空
+    while (question.options.length < optionCount) {
+      question.options.push('')
+    }
+    // 截断多余选项
+    question.options = question.options.slice(0, optionCount)
+  }
+  
+  // 重置答案
+  question.correct_answer = question.type === 'multi' ? [] : ''
+}
+
+// 获取详情数据
 function fetchDetail() {
   fetch(`${baseUrl}/api/exam_template?id=${id}`)
     .then((res) => res.json())
     .then((data) => {
       if (data.code === 200) {
+        // 确保每个题目有正确数量的选项
+        data.data.questions = data.data.questions.map(q => {
+          q.options = q.options || []
+          const optionCount = getOptionCount(q.type)
+          
+          // 填充选项
+          while (q.options.length < optionCount) {
+            // 判断题预置"正确"、"错误"
+            if (q.type === 'judge' && q.options.length < 2) {
+              q.options.push(q.options.length === 0 ? '正确' : '错误')
+            } else {
+              q.options.push('')
+            }
+          }
+          // 截断多余的选项
+          q.options = q.options.slice(0, optionCount)
+          
+          // 初始化正确答案
+          if (!q.correct_answer) {
+            q.correct_answer = q.type === 'multi' ? [] : ''
+          }
+          
+          return q
+        })
         form.value = data.data
       } else {
         throw new Error(data.msg)
@@ -160,33 +270,12 @@ function fetchDetail() {
       loading.value = false
     })
 }
- 
 
- 
-function updateAnswer(question, option, event) {
-  if (question.type === 'multi') {
-    if (!Array.isArray(question.correct_answer)) question.correct_answer = []
-    if (event.target.checked) {
-      question.correct_answer.push(option)
-    } else {
-      question.correct_answer = question.correct_answer.filter((a) => a !== option)
-    }
-  } else {
-    question.correct_answer = option
-  }
-}
-
+// 提交表单
 function handleSubmit() {
-  console.log('提交按钮被点击了！')
-
-  // 保留原来的转换逻辑
   const transformedQuestions = arrayToLetter(form.value.questions)
 
   const enhancedQuestions = transformedQuestions.map((q) => {
-    console.log(`处理问题：${q.title}`)
-    console.log(`原始选项：`, q.options)
-    console.log(`原始答案：`, q.correct_answer)
-
     let bitmask = 0
 
     // 处理单选题
@@ -195,8 +284,6 @@ function handleSubmit() {
         const index = q.correct_answer.charCodeAt(0) - 'A'.charCodeAt(0)
         if (index >= 0 && index < q.options.length) {
           bitmask = 1 << index
-        } else {
-          console.warn(`单选题答案索引越界: ${q.correct_answer}`)
         }
       }
     }
@@ -204,7 +291,6 @@ function handleSubmit() {
     // 处理多选题
     else if (q.type === 'multi') {
       if (typeof q.correct_answer === 'string') {
-        // 如果答案是字符串，例如 'A,C'，将其转换为数组
         q.correct_answer = q.correct_answer.split(',')
       }
 
@@ -213,18 +299,13 @@ function handleSubmit() {
           const index = letter.charCodeAt(0) - 'A'.charCodeAt(0)
           if (index >= 0 && index < q.options.length) {
             bitmask |= 1 << index
-          } else {
-            console.warn(`多选题答案索引越界: ${letter}`)
           }
         })
       }
     }
 
-    console.log(`计算后的 bitmask: ${bitmask.toString(2)}`)
     return { ...q, correct_answer_bitmask: bitmask }
   })
-
-  console.log('准备提交的题目：', JSON.stringify(enhancedQuestions, null, 2))
 
   const submitData = {
     ...form.value,
@@ -249,6 +330,7 @@ function handleSubmit() {
       alert('请求失败：' + err.message)
     })
 }
+
 onMounted(() => {
   if (!id) {
     error.value = '缺少试卷模板 ID'

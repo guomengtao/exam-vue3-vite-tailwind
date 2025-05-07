@@ -34,12 +34,13 @@
             <td class="px-4 py-2">{{ formatDate(item.created_at) }}</td>
             <td class="px-4 py-2 space-x-2">
               <!-- 操作按钮 -->
-              <button
-                @click="editTemplate(item.id)"
-                class="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-400"
+            
+                            <router-link
+                :to="`/admin/exam-template/edit/${item.id}`"
+                class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-400"
               >
                 编辑
-              </button>
+              </router-link>
               <router-link
                 :to="`/admin/exam-template/detail/${item.id}`"
                 class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-400"
@@ -94,7 +95,7 @@ const error = ref('')
 const loading = ref(true)
 
 const page = ref(1)
-const limit = 2
+const limit = 20
 const total = ref(0)
 
 const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://47.120.38.206:8081'
