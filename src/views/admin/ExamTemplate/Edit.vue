@@ -82,23 +82,23 @@
             <label class="block text-sm font-medium">选项</label>
             <ul class="space-y-1">
               <li
-                v-for="idx in getOptionCount(q.type)"
+                v-for="(opt, idx) in q.options"
                 :key="idx"
                 class="flex items-center gap-2"
               >
                 <input
                   :type="q.type === 'multi' ? 'checkbox' : 'radio'"
                   :name="`answer-${index}`"
-                  :value="getOptionValue(q, idx-1)"
-                  :checked="isOptionSelected(q, getOptionValue(q, idx-1))"
-                  @change="updateAnswer(q, getOptionValue(q, idx-1), $event)"
+                  :value="opt"
+                  :checked="(q.correct_answer_bitmask & (1 << idx)) !== 0"
+                  @change="handleBitmaskChange(q, idx, $event)"
                   :disabled="q.type === 'judge'"
                 />
+                <span class="option-letter">{{ String.fromCharCode(65 + idx) }}.</span>
                 <input
-                  v-model="q.options[idx-1]"
+                  v-model="q.options[idx]"
                   type="text"
                   class="form-input flex-1"
-                  :placeholder="getOptionPlaceholder(q.type, idx-1)"
                   :readonly="q.type === 'judge'"
                 />
               </li>
@@ -128,12 +128,16 @@
   border-radius: 0.375rem;
   width: 100%;
 }
+.option-letter {
+  font-weight: bold;
+  min-width: 1.5rem;
+  display: inline-block;
+}
 </style>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import arrayToLetter from '@/utils/arrayToLetter'
 
 const baseUrl = import.meta.env.VITE_API_BASE_URL
 const route = useRoute()
@@ -149,111 +153,59 @@ const error = ref('')
 // 根据题目类型获取选项数量
 function getOptionCount(type) {
   switch(type) {
-    case 'judge': return 2    // 判断题固定2个选项
-    default: return 4         // 其他类型固定4个选项
+    case 'judge': return 2
+    default: return 4
   }
 }
 
-// 获取选项值（确保选项存在）
-function getOptionValue(question, index) {
-  if (!question.options) {
-    question.options = []
-  }
-  while (question.options.length <= index) {
-    // 判断题预置"正确"、"错误"
-    if (question.type === 'judge' && question.options.length < 2) {
-      question.options.push(question.options.length === 0 ? '正确' : '错误')
-    } else {
-      question.options.push('')
-    }
-  }
-  return question.options[index]
-}
-
-// 获取选项占位文本
-function getOptionPlaceholder(type, index) {
-  if (type === 'judge') {
-    return index === 0 ? '正确' : '错误'
-  }
-  return `选项 ${String.fromCharCode(65 + index)}`
-}
-
-// 检查选项是否被选中
-function isOptionSelected(question, option) {
-  if (!option) return false
+// 处理bitmask变化
+function handleBitmaskChange(question, index, event) {
+  const mask = 1 << index;
   if (question.type === 'multi') {
-    return Array.isArray(question.correct_answer) && 
-           question.correct_answer.includes(option)
+    question.correct_answer_bitmask = event.target.checked
+      ? question.correct_answer_bitmask | mask
+      : question.correct_answer_bitmask & ~mask;
   } else {
-    return question.correct_answer === option
+    question.correct_answer_bitmask = event.target.checked ? mask : 0;
   }
 }
 
-// 更新答案选择
-function updateAnswer(question, option, event) {
-  if (!option || question.type === 'judge') return
-  
-  if (question.type === 'multi') {
-    if (!Array.isArray(question.correct_answer)) {
-      question.correct_answer = []
-    }
-    if (event.target.checked) {
-      question.correct_answer.push(option)
-    } else {
-      question.correct_answer = question.correct_answer.filter(a => a !== option)
-    }
-  } else {
-    question.correct_answer = option
-  }
-}
-
-// 题目类型变化时重置选项
+// 题目类型变化时重置
 function handleTypeChange(question) {
   const optionCount = getOptionCount(question.type)
   question.options = question.options || []
   
-  // 重置选项
-  if (question.type === 'judge') {
-    question.options = ['正确', '错误']
-  } else {
-    // 保持原有选项，不足的补空
-    while (question.options.length < optionCount) {
-      question.options.push('')
-    }
-    // 截断多余选项
-    question.options = question.options.slice(0, optionCount)
+  // 初始化选项
+  while (question.options.length < optionCount) {
+    question.options.push(
+      question.type === 'judge' 
+        ? (question.options.length ? '错误' : '正确')
+        : ''
+    )
   }
-  
-  // 重置答案
-  question.correct_answer = question.type === 'multi' ? [] : ''
+  question.options = question.options.slice(0, optionCount)
+  question.correct_answer_bitmask = 0
 }
 
 // 获取详情数据
 function fetchDetail() {
   fetch(`${baseUrl}/api/exam_template?id=${id}`)
-    .then((res) => res.json())
-    .then((data) => {
+    .then(res => res.json())
+    .then(data => {
       if (data.code === 200) {
-        // 确保每个题目有正确数量的选项
         data.data.questions = data.data.questions.map(q => {
-          q.options = q.options || []
+          // 确保bitmask存在
+          q.correct_answer_bitmask = q.correct_answer_bitmask || 0
+          
+          // 初始化选项
           const optionCount = getOptionCount(q.type)
-          
-          // 填充选项
+          q.options = (q.options || []).slice(0, optionCount)
           while (q.options.length < optionCount) {
-            // 判断题预置"正确"、"错误"
-            if (q.type === 'judge' && q.options.length < 2) {
-              q.options.push(q.options.length === 0 ? '正确' : '错误')
-            } else {
-              q.options.push('')
-            }
-          }
-          // 截断多余的选项
-          q.options = q.options.slice(0, optionCount)
-          
-          // 初始化正确答案
-          if (!q.correct_answer) {
-            q.correct_answer = q.type === 'multi' ? [] : ''
+            q.options.push(
+              q.type === 'judge' 
+                ? (q.options.length ? '错误' : '正确')
+                : ''
+            )
           }
           
           return q
@@ -263,7 +215,7 @@ function fetchDetail() {
         throw new Error(data.msg)
       }
     })
-    .catch((err) => {
+    .catch(err => {
       error.value = err.message
     })
     .finally(() => {
@@ -273,52 +225,26 @@ function fetchDetail() {
 
 // 提交表单
 function handleSubmit() {
-  const transformedQuestions = arrayToLetter(form.value.questions)
-
-  const enhancedQuestions = transformedQuestions.map((q) => {
-    let bitmask = 0
-
-    // 处理单选题
-    if (q.type === 'single') {
-      if (typeof q.correct_answer === 'string') {
-        const index = q.correct_answer.charCodeAt(0) - 'A'.charCodeAt(0)
-        if (index >= 0 && index < q.options.length) {
-          bitmask = 1 << index
-        }
-      }
-    }
-    
-    // 处理多选题
-    else if (q.type === 'multi') {
-      if (typeof q.correct_answer === 'string') {
-        q.correct_answer = q.correct_answer.split(',')
-      }
-
-      if (Array.isArray(q.correct_answer)) {
-        q.correct_answer.forEach((letter) => {
-          const index = letter.charCodeAt(0) - 'A'.charCodeAt(0)
-          if (index >= 0 && index < q.options.length) {
-            bitmask |= 1 << index
-          }
-        })
-      }
-    }
-
-    return { ...q, correct_answer_bitmask: bitmask }
-  })
-
   const submitData = {
     ...form.value,
-    questions: enhancedQuestions,
+    questions: form.value.questions.map(q => ({
+      id: q.id,
+      type: q.type,
+      title: q.title,
+      score: q.score,
+      options: q.options,
+      image_url: q.image_url,
+      correct_answer_bitmask: q.correct_answer_bitmask || 0
+    }))
   }
 
   fetch(`${baseUrl}/api/exam_template`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(submitData),
+    body: JSON.stringify(submitData)
   })
     .then(res => res.json())
-    .then((data) => {
+    .then(data => {
       if (data.code === 200) {
         alert('保存成功')
         router.push(`/admin/exam-template/detail/${form.value.id}`)
@@ -326,7 +252,7 @@ function handleSubmit() {
         alert(`保存失败：${data.msg}`)
       }
     })
-    .catch((err) => {
+    .catch(err => {
       alert('请求失败：' + err.message)
     })
 }
