@@ -21,18 +21,12 @@
         </div>
         <div>
           <label class="block text-sm font-medium">总分</label>
-          <input v-model="form.total_score" type="number" class="form-input w-full" required />
-        </div>
-        <div>
-          <label class="block text-sm font-medium">分类ID</label>
-          <input v-model="form.category_id" type="text" class="form-input w-full" />
-        </div>
-        <div>
-          <label class="block text-sm font-medium">发布状态</label>
-          <select v-model="form.status" class="form-select w-full">
-            <option :value="1">已发布</option>
-            <option :value="0">未发布</option>
-          </select>
+          <input 
+            :value="totalScore" 
+            type="number" 
+            class="form-input w-full bg-gray-100" 
+            readonly
+          />
         </div>
       </div>
 
@@ -48,12 +42,28 @@
       </div>
 
       <div>
-        <h2 class="text-xl font-semibold mt-6 mb-2">题目列表</h2>
+        <h2 class="text-xl font-semibold mb-2">题目列表</h2>
+
+        <div v-if="form.questions.length === 0" class="text-gray-500 py-4 text-center">
+          暂无题目，请点击下方"添加题目"按钮
+        </div>
+
         <div
           v-for="(q, index) in form.questions"
           :key="q.id || index"
-          class="border-t pt-4 mt-4 space-y-2"
+          class="border-t pt-4 mt-4 space-y-2 relative"
         >
+          <button
+            type="button"
+            @click="removeQuestion(index)"
+            class="absolute top-2 right-0 text-red-600 hover:text-red-800 delete-btn"
+            title="删除此题"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium">题目 {{ index + 1 }}</label>
@@ -69,7 +79,13 @@
             </div>
             <div>
               <label class="block text-sm font-medium">分值</label>
-              <input v-model="q.score" type="number" class="form-input w-full" />
+              <input 
+                v-model.number="q.score" 
+                type="number" 
+                min="0"
+                class="form-input w-full" 
+                @change="updateTotalScore"
+              />
             </div>
             <div>
               <label class="block text-sm font-medium">题图链接</label>
@@ -105,6 +121,16 @@
             </ul>
           </div>
         </div>
+
+        <div class="pt-4">
+          <button
+            type="button"
+            @click="addQuestion"
+            class="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-500"
+          >
+            + 添加题目
+          </button>
+        </div>
       </div>
 
       <div class="pt-4">
@@ -133,10 +159,16 @@
   min-width: 1.5rem;
   display: inline-block;
 }
+.delete-btn {
+  transition: all 0.2s;
+}
+.delete-btn:hover {
+  transform: scale(1.1);
+}
 </style>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 const baseUrl = import.meta.env.VITE_API_BASE_URL
@@ -145,10 +177,43 @@ const router = useRouter()
 const id = route.query.id || route.params.id
 
 const form = ref({
+  title: '',
+  description: '',
+  cover_image: '',
   questions: []
 })
 const loading = ref(true)
 const error = ref('')
+
+// 计算总分
+const totalScore = computed(() => {
+  return form.value.questions.reduce((sum, q) => sum + (Number(q.score) || 0), 0)
+})
+
+// 更新总分（当题目分数变化时）
+function updateTotalScore() {
+  // 计算属性会自动更新，这里只是确保响应式触发
+}
+
+// 添加新题目
+function addQuestion() {
+  form.value.questions.push({
+    id: Date.now(), // 临时ID
+    type: 'single',
+    title: '',
+    score: 5, // 默认5分
+    options: ['', '', '', ''],
+    image_url: '',
+    correct_answer_bitmask: 0
+  })
+}
+
+// 删除题目
+function removeQuestion(index) {
+  if (confirm('确定要删除这道题目吗？')) {
+    form.value.questions.splice(index, 1)
+  }
+}
 
 // 根据题目类型获取选项数量
 function getOptionCount(type) {
@@ -160,13 +225,13 @@ function getOptionCount(type) {
 
 // 处理bitmask变化
 function handleBitmaskChange(question, index, event) {
-  const mask = 1 << index;
+  const mask = 1 << index
   if (question.type === 'multi') {
     question.correct_answer_bitmask = event.target.checked
       ? question.correct_answer_bitmask | mask
-      : question.correct_answer_bitmask & ~mask;
+      : question.correct_answer_bitmask & ~mask
   } else {
-    question.correct_answer_bitmask = event.target.checked ? mask : 0;
+    question.correct_answer_bitmask = event.target.checked ? mask : 0
   }
 }
 
@@ -193,7 +258,12 @@ function fetchDetail() {
     .then(res => res.json())
     .then(data => {
       if (data.code === 200) {
-        data.data.questions = data.data.questions.map(q => {
+        // 移除不需要的字段
+        const { category_id, status, ...rest } = data.data
+        form.value = rest
+        
+        // 处理题目数据
+        form.value.questions = form.value.questions.map(q => {
           // 确保bitmask存在
           q.correct_answer_bitmask = q.correct_answer_bitmask || 0
           
@@ -210,7 +280,11 @@ function fetchDetail() {
           
           return q
         })
-        form.value = data.data
+        
+        // 确保至少有一个题目
+        if (form.value.questions.length === 0) {
+          addQuestion()
+        }
       } else {
         throw new Error(data.msg)
       }
@@ -231,7 +305,7 @@ function handleSubmit() {
       id: q.id,
       type: q.type,
       title: q.title,
-      score: q.score,
+      score: Number(q.score) || 0,
       options: q.options,
       image_url: q.image_url,
       correct_answer_bitmask: q.correct_answer_bitmask || 0
