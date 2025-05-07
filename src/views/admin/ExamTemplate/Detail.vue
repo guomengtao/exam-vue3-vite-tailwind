@@ -58,6 +58,7 @@
             </ul>
           </div>
           <div><strong>正确答案：</strong>{{ q.correct_answer }}</div>
+          <div><strong>正确答案bitmask：</strong>{{ q.correct_answer_bitmask }}</div>
         </div>
       </div>
     </div>

@@ -111,7 +111,7 @@
         >
           保存修改
         </button>
-      </div>
+       </div>
     </form>
   </div>
 </template>
@@ -160,13 +160,75 @@ function fetchDetail() {
       loading.value = false
     })
 }
+ 
 
- function handleSubmit() {
+ 
+function updateAnswer(question, option, event) {
+  if (question.type === 'multi') {
+    if (!Array.isArray(question.correct_answer)) question.correct_answer = []
+    if (event.target.checked) {
+      question.correct_answer.push(option)
+    } else {
+      question.correct_answer = question.correct_answer.filter((a) => a !== option)
+    }
+  } else {
+    question.correct_answer = option
+  }
+}
+
+function handleSubmit() {
+  console.log('提交按钮被点击了！')
+
+  // 保留原来的转换逻辑
   const transformedQuestions = arrayToLetter(form.value.questions)
+
+  const enhancedQuestions = transformedQuestions.map((q) => {
+    console.log(`处理问题：${q.title}`)
+    console.log(`原始选项：`, q.options)
+    console.log(`原始答案：`, q.correct_answer)
+
+    let bitmask = 0
+
+    // 处理单选题
+    if (q.type === 'single') {
+      if (typeof q.correct_answer === 'string') {
+        const index = q.correct_answer.charCodeAt(0) - 'A'.charCodeAt(0)
+        if (index >= 0 && index < q.options.length) {
+          bitmask = 1 << index
+        } else {
+          console.warn(`单选题答案索引越界: ${q.correct_answer}`)
+        }
+      }
+    }
+    
+    // 处理多选题
+    else if (q.type === 'multi') {
+      if (typeof q.correct_answer === 'string') {
+        // 如果答案是字符串，例如 'A,C'，将其转换为数组
+        q.correct_answer = q.correct_answer.split(',')
+      }
+
+      if (Array.isArray(q.correct_answer)) {
+        q.correct_answer.forEach((letter) => {
+          const index = letter.charCodeAt(0) - 'A'.charCodeAt(0)
+          if (index >= 0 && index < q.options.length) {
+            bitmask |= 1 << index
+          } else {
+            console.warn(`多选题答案索引越界: ${letter}`)
+          }
+        })
+      }
+    }
+
+    console.log(`计算后的 bitmask: ${bitmask.toString(2)}`)
+    return { ...q, correct_answer_bitmask: bitmask }
+  })
+
+  console.log('准备提交的题目：', JSON.stringify(enhancedQuestions, null, 2))
 
   const submitData = {
     ...form.value,
-    questions: transformedQuestions,
+    questions: enhancedQuestions,
   }
 
   fetch(`${baseUrl}/api/exam_template`, {
@@ -187,21 +249,6 @@ function fetchDetail() {
       alert('请求失败：' + err.message)
     })
 }
-
- 
-function updateAnswer(question, option, event) {
-  if (question.type === 'multi') {
-    if (!Array.isArray(question.correct_answer)) question.correct_answer = []
-    if (event.target.checked) {
-      question.correct_answer.push(option)
-    } else {
-      question.correct_answer = question.correct_answer.filter((a) => a !== option)
-    }
-  } else {
-    question.correct_answer = option
-  }
-}
-
 onMounted(() => {
   if (!id) {
     error.value = '缺少试卷模板 ID'
