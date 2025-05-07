@@ -116,9 +116,23 @@
   </div>
 </template>
 
+
+
+<style scoped>
+.form-input,
+.form-select,
+.form-textarea {
+  border: 1px solid #d1d5db;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  width: 100%;
+}
+</style>
+
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import arrayToLetter from '@/utils/arrayToLetter'
 
 const baseUrl = import.meta.env.VITE_API_BASE_URL
 const route = useRoute()
@@ -147,13 +161,20 @@ function fetchDetail() {
     })
 }
 
-function handleSubmit() {
+ function handleSubmit() {
+  const transformedQuestions = arrayToLetter(form.value.questions)
+
+  const submitData = {
+    ...form.value,
+    questions: transformedQuestions,
+  }
+
   fetch(`${baseUrl}/api/exam_template`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(form.value),
+    body: JSON.stringify(submitData),
   })
-    .then((res) => res.json())
+    .then(res => res.json())
     .then((data) => {
       if (data.code === 200) {
         alert('保存成功')
@@ -167,6 +188,7 @@ function handleSubmit() {
     })
 }
 
+ 
 function updateAnswer(question, option, event) {
   if (question.type === 'multi') {
     if (!Array.isArray(question.correct_answer)) question.correct_answer = []
@@ -189,14 +211,3 @@ onMounted(() => {
   }
 })
 </script>
-
-<style scoped>
-.form-input,
-.form-select,
-.form-textarea {
-  border: 1px solid #d1d5db;
-  padding: 0.5rem;
-  border-radius: 0.375rem;
-  width: 100%;
-}
-</style>
