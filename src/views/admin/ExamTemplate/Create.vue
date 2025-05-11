@@ -1,7 +1,7 @@
 <template>
   <div class="p-6 space-y-6 max-w-5xl mx-auto">
     <div class="flex items-center justify-between border-b pb-4 mb-6">
-      <h1 class="text-2xl font-bold">新建试卷模板</h1>
+      <h1 class="text-2xl font-bold">新建试卷模板-</h1>
               <ImportExamButton @import-success="handleImportSuccess" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-500"/>
 
       <router-link
@@ -230,6 +230,7 @@ function handleSubmit() {
   const submitData = {
     ...form.value,
     questions: form.value.questions.map(q => ({
+      id: q.id, // ✅ 保留题目ID
       type: q.type,
       title: q.title,
       score: Number(q.score) || 0,

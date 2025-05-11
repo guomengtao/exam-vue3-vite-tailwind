@@ -24,10 +24,12 @@
     <!-- 结果展示 -->
     <div v-if="!loading && !error && paperData && resultData" class="result-content">
       <div class="result-header">
-        <h1>{{ paperData.title }}</h1>
-        <div class="result-meta">
-          <span class="total-score">总分: {{ resultData.total_score }}分</span>
-          <span class="submit-time">提交时间: {{ formatTime(resultData.created_at) }}</span>
+        <h1 class="text-2xl font-bold mb-2">{{ paperData.title }}</h1>
+        <div class="result-info-row">
+          <span>姓名：{{ username }}　学号：{{ userId }}</span>
+          <span class="final-score-banner">总得分：{{ resultData.total_score }}分</span>
+          <span>总分: {{ paperData.total_score }}分</span>
+          <span>提交时间: {{ formatTime(resultData.created_at) }}</span>
         </div>
       </div>
 
@@ -42,7 +44,7 @@
             <span class="question-index">{{ index + 1 }}.</span>
             {{ question.title }}
             <span class="question-score">({{ question.score }}分)</span>
-            <span class="status-badge">{{ getAnswerStatusText(question) }}</span>
+            <span class="status-badge"></span>
           </div>
 
           <!-- 选项列表 -->
@@ -135,17 +137,11 @@
 }
 
 /* 结果内容样式 */
+/* 头部样式 */
 .result-header {
   margin-bottom: 30px;
   padding-bottom: 15px;
   border-bottom: 1px solid #eee;
-}
-
-.result-meta {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 10px;
-  color: #666;
 }
 
 .question-item {
@@ -166,6 +162,89 @@
 
 .question-item.not-answered {
   border-left: 4px solid #d9d9d9;
+}
+
+/* 新增样式 */
+.option-item {
+  padding: 8px 12px;
+  margin: 4px 0;
+  border-radius: 5px;
+  background: #f9f9f9;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+
+.option-item.correct {
+  border: 1px solid #4caf50;
+  background-color: #e8f5e9;
+}
+
+.option-item.selected {
+  border: 1px dashed #2196f3;
+}
+
+.option-letter {
+  font-weight: bold;
+  width: 20px;
+}
+
+.user-answer-tag::before {
+  content: "✔️";
+  margin-right: 4px;
+  color: #28a745;
+}
+
+.correct-answer-tag::before {
+  content: "✅";
+  margin-left: 8px;
+  color: #28a745;
+}
+
+.status-badge {
+  margin-left: 10px;
+  font-size: 18px;
+}
+
+.question-item.correct .status-badge::before {
+  content: "✔️";
+  color: #4caf50;
+}
+
+.question-item.incorrect .status-badge::before {
+  content: "❌";
+  color: #f44336;
+}
+
+.question-item.not-answered .status-badge::before {
+  content: "⚠️";
+}
+
+/* 结果信息一行显示 */
+.result-info-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  font-size: 15px;
+  color: #555;
+  border-top: 1px solid #eee;
+  padding-top: 10px;
+}
+
+/* 修改后的 final-score-banner 样式 */
+.final-score-banner {
+  font-size: 20px;
+  font-weight: bold;
+  color: #2e7d32;
+}
+
+.student-info {
+  /* margin-top: 10px;  删除margin-top以融入result-info-row */
+  color: #555;
+  font-size: 15px;
 }
 
 /* 其他样式保持不变... */
@@ -203,7 +282,7 @@ const fetchPaperData = async () => {
 
 // 获取答题结果
 const fetchResultData = async () => {
-  const url = `${apiBaseUrl}/api/exam/result/${route.params.record_id}`
+  const url = `${apiBaseUrl}/api/user/answer/${route.params.record_id}`
   const res = await fetch(url)
   
   if (!res.ok) throw new Error(`结果加载失败: HTTP ${res.status}`)
@@ -246,6 +325,7 @@ const fetchData = async () => {
       ...resultRes.data,
       answers: normalizeAnswers(resultRes.data.answers)
     }
+    resultData.value.user_uuid = resultRes.data.user_uuid || ''
 
     apiStatus.value = '请求成功'
 
@@ -279,7 +359,15 @@ const normalizeAnswers = (answers) => {
   return normalized
 }
 
-const formatTime = (timestamp) => new Date(timestamp * 1000).toLocaleString()
+const formatTime = (timestamp) => {
+  const date = new Date(timestamp * 1000)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hour = String(date.getHours()).padStart(2, '0')
+  const minute = String(date.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hour}:${minute}`
+}
 
 const isOptionSelected = (question, optIndex) => {
   if (!resultData.value?.answers) return false
@@ -301,8 +389,13 @@ const isCorrectOption = (question, optIndex) => {
 }
 
 const getQuestionScore = (question) => {
-  return resultData.value?.answers?.[question.id]?.score ?? 0
+  const raw = resultData.value?.answers?.[question.id]?.score ?? 0
+  return isAnswerCorrect(question) ? raw : 0
 }
+import { computed } from 'vue'
+
+const username = computed(() => resultData.value?.username || '')
+const userId = computed(() => resultData.value?.user_id || '')
 
 const getAnswerStatusText = (question) => {
   if (!resultData.value?.answers?.[question.id]) return "未作答"
@@ -349,5 +442,3 @@ onMounted(() => {
   fetchData()
 })
 </script>
-
- 

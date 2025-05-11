@@ -2,10 +2,26 @@
   <div class="exam-container">
     <!-- 试卷头部 -->
     <div class="exam-header">
-      <h1>{{ paper.title }}</h1>
+      <h1 class="text-4xl font-extrabold">{{ paper.title }}</h1>
+
+      <!-- 姓名与学号 -->
+      <div class="student-info">
+        <label>
+          姓-名：
+          <input v-model="username" type="text" placeholder="请输入姓名" required />
+        </label>
+        <label>
+          学号：
+          <input v-model="userId" type="text" placeholder="请输入学号" required />
+        </label>
+      </div>
+
       <div class="exam-meta">
         <span>总分：{{ paper.total_score }}分</span>
         <span>剩余时间：{{ formattedTime }}</span>
+        <span @click="resetExam" class="text-sm text-gray-400 cursor-pointer hover:underline ml-auto">
+          重填
+        </span>
       </div>
       <img 
         v-if="paper.cover_image" 
@@ -23,7 +39,7 @@
         class="question-card"
       >
         <h3>{{ index + 1 }}. {{ question.title }}（{{ question.score }}分）</h3>
-        
+
         <!-- 题图 -->
         <img 
           v-if="question.image_url" 
@@ -59,7 +75,7 @@
           >
             <input
               type="checkbox"
-              :name="'q_' + question.id"
+              :name="'q_' + question.id + '_' + optIndex"
               :value="optIndex"
               v-model="answers[question.id].answer"
             />
@@ -101,7 +117,6 @@
   </div>
 </template>
 
-
 <style scoped>
 .exam-container {
   max-width: 800px;
@@ -125,6 +140,24 @@
 .cover-image {
   max-width: 200px;
   margin-top: 15px;
+  border-radius: 4px;
+}
+
+.student-info {
+  display: flex;
+  gap: 20px;
+  margin: 15px 0;
+}
+
+.student-info label {
+  font-weight: bold;
+  color: #d32f2f;
+}
+
+.student-info input {
+  margin-left: 8px;
+  padding: 5px 10px;
+  border: 1px solid #ccc;
   border-radius: 4px;
 }
 
@@ -191,19 +224,52 @@
   background: #cccccc;
   cursor: not-allowed;
 }
+.bg-red-500 {
+  background-color: #f56565;
+}
+.hover\:bg-red-600:hover {
+  background-color: #e53e3e;
+}
+.mt-4 {
+  margin-top: 1rem;
+}
 </style>
- 
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-
-const route = useRoute()
-const router = useRouter()
 
 // 环境变量
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
 const staticHost = import.meta.env.VITE_STATIC_HOST
+
+const route = useRoute()
+const router = useRouter()
+
+// 统一管理 localStorage
+const storage = {
+  get(key) {
+    try {
+      return JSON.parse(localStorage.getItem(key))
+    } catch {
+      return localStorage.getItem(key)
+    }
+  },
+  set(key, value) {
+    if (typeof value === 'object') {
+      localStorage.setItem(key, JSON.stringify(value))
+    } else {
+      localStorage.setItem(key, value)
+    }
+  },
+  remove(key) {
+    localStorage.removeItem(key)
+  }
+}
+
+// 学生姓名与学号
+const username = ref(storage.get('username') || '')
+const userId = ref(storage.get('userId') || '')
 
 // 试卷数据
 const paper = ref({
@@ -239,26 +305,45 @@ const formattedTime = computed(() => {
 })
 
 // 获取试卷数据
-const fetchPaper = async () => {
+ const fetchPaper = async () => {
   try {
+    console.log('开始加载试卷...');
+    console.log('请求地址:', `${apiBaseUrl}/api/exam_paper/redis?uuid=${route.params.id}`);
     const res = await fetch(`${apiBaseUrl}/api/exam_paper/redis?uuid=${route.params.id}`)
     const data = await res.json()
     
+    console.log('接口响应数据:', data);
+
     if (data.code === 200) {
       paper.value = {
         ...data.data,
         questions: JSON.parse(data.data.questions || '[]')
       }
-      
+
       // 初始化答案结构
       paper.value.questions.forEach(q => {
+        if (!q.id) {
+          console.warn('警告：有题目 id 为 undefined', q)
+          return
+        }
         answers.value[q.id] = {
           answer: q.type === 'multi' ? [] : null,
           score: q.score
         }
       })
-      
+
+      const savedAnswers = storage.get('examAnswers')
+      if (savedAnswers) {
+        // 恢复多选题答案为数组格式
+        for (const qid in savedAnswers) {
+          if (!answers.value[qid]) answers.value[qid] = { answer: null, score: 0 };
+          answers.value[qid].answer = savedAnswers[qid].answer
+        }
+      }
+
       remainingSeconds.value = (data.data.time_limit || 60) * 60
+    } else {
+      alert('加载试卷失败，状态码不为200');
     }
   } catch (err) {
     console.error('加载试卷失败:', err)
@@ -268,10 +353,22 @@ const fetchPaper = async () => {
 
 // 提交答案
 const submitAnswers = async () => {
+  // 校验姓名学号
+  if (!(username.value && typeof username.value === 'string' && username.value.trim()) || 
+      !(userId.value && typeof userId.value === 'string' && userId.value.trim())) {
+    alert('请填写完整的姓名和学号！')
+    return
+  }
+
+  // 强制转换为字符串
+  const safeUsername = username.value.trim()
+  const safeUserId = userId.value.trim()
+
   isSubmitting.value = true
-  
+  storage.set('username', safeUsername)
+  storage.set('userId', safeUserId)
+
   try {
-    // 过滤掉未作答的题目
     const validAnswers = {}
     for (const qid in answers.value) {
       if (answers.value[qid].answer !== null) {
@@ -285,10 +382,12 @@ const submitAnswers = async () => {
     const submission = {
       uuid: getCurrentUserUUID(),
       exam_id: paper.value.id,
+      username: safeUsername,
+      user_id: safeUserId,
       answers: validAnswers
     }
 
-    const res = await fetch(`${apiBaseUrl}/api/submit_answer`, {
+    const res = await fetch(`${apiBaseUrl}/api/user/answer`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
@@ -296,7 +395,7 @@ const submitAnswers = async () => {
       },
       body: JSON.stringify(submission)
     })
-    
+
     if (!res.ok) {
       const errorData = await res.json()
       throw new Error(errorData.message || '提交失败')
@@ -305,9 +404,7 @@ const submitAnswers = async () => {
     const result = await res.json()
     router.push({
       path: `/exam/result/${result.record_id}`,
-      query: { 
-        paper_uuid: paper.value.uuid, // 试卷唯一标识
-      }
+      query: { paper_uuid: paper.value.uuid }
     })
 
   } catch (err) {
@@ -315,6 +412,26 @@ const submitAnswers = async () => {
     alert(`提交失败: ${err.message}`)
   } finally {
     isSubmitting.value = false
+  }
+}
+
+// 监视 answers 自动保存
+watch(answers, (newVal) => {
+  storage.set('examAnswers', newVal)
+  console.log('当前答题状态:', JSON.stringify(newVal, null, 2))
+}, { deep: true })
+
+// 监视 username 和 userId 实时保存到 localStorage
+watch(username, val => storage.set('username', val))
+watch(userId, val => storage.set('userId', val))
+
+// 清空试卷答题记录
+const resetExam = () => {
+  if (confirm('确定要清空所有答题记录并重新开始吗？')) {
+    storage.remove('examAnswers')
+    storage.remove('username')
+    storage.remove('userId')
+    window.location.reload()
   }
 }
 
@@ -334,5 +451,3 @@ onMounted(() => {
 
 onUnmounted(() => clearInterval(timer))
 </script>
-
- 

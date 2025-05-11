@@ -87,7 +87,9 @@ const loading = ref(true)
 // 计算属性：解析questions JSON字符串
 const parsedQuestions = computed(() => {
   try {
-    return result.value.questions ? JSON.parse(result.value.questions) : []
+    const parsed = result.value.questions ? JSON.parse(result.value.questions) : []
+    console.log('解析后的题目结构:', parsed)
+    return parsed
   } catch (e) {
     console.error('解析题目数据失败:', e)
     return []
@@ -109,6 +111,7 @@ async function fetchExamTemplate() {
     const data = await response.json()
     if (data.code === 200 && data.data) {
       result.value = data.data
+      console.log('试卷题目数据：', result.value.questions)
     } else {
       throw new Error(data.msg || '无数据')
     }

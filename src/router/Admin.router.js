@@ -41,7 +41,7 @@ export default [
             path: 'create',
             name: 'ExamTemplateCreate',
             component: () => import('@/views/admin/ExamTemplate/Create.vue'),
-            meta: { title: '创建试卷模板' },
+            meta: { requiresAuth: true, title: '创建试卷模板' },
           },
           {
             path: 'detail/:id',
