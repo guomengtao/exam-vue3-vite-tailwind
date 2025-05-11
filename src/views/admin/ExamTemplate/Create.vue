@@ -2,6 +2,8 @@
   <div class="p-6 space-y-6 max-w-5xl mx-auto">
     <div class="flex items-center justify-between border-b pb-4 mb-6">
       <h1 class="text-2xl font-bold">新建试卷模板</h1>
+              <ImportExamButton @import-success="handleImportSuccess" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-500"/>
+
       <router-link
         to="/admin/exam-template/list"
         class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500"
@@ -133,6 +135,8 @@
 </template>
 
 <script setup>
+import ImportExamButton from '@/components/ImportExamButton.vue'
+
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 

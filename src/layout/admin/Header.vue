@@ -17,7 +17,7 @@ import { useRouter } from 'vue-router';
 const router = useRouter();
 const logout = () => {
   // 清除登录信息（如 token）
-  // localStorage.removeItem('token');
+  localStorage.removeItem('token');
   router.push('/admin/login');
 };
 </script>

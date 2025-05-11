@@ -13,10 +13,15 @@ export default [
     component: () => import('@/views/EnvTest.vue'),
   },
   {
+    path: '/upload',
+    name: 'upload',
+    component: () => import('@/views/ImagePic.vue'),
+  },
+  {
     path: '/admin',
     name: 'Admin',
     component: () => import('@/layout/admin/AdminLayout.vue'),
-    meta: { title: '首页' },
+    meta: { requiresAuth: true, title: '首页' },
     children: [
       {
         path: '', // 默认访问 /admin 时加载首页
@@ -27,7 +32,7 @@ export default [
       {
         path: 'exam-template',
         name: 'ExamTemplate',
-        meta: { title: '试卷模板' },
+        meta: { requiresAuth: true, title: '试卷模版' },
          // 直接指向试卷模板列表
          component: EmptyRouterView,
          redirect: { name: 'ExamTemplateList' }, // ✅ 自动跳到列表页
@@ -54,7 +59,30 @@ export default [
             path: 'list',
             name: 'ExamTemplateList',
             component: () => import('@/views/admin/ExamTemplate/List.vue'),
-            meta: { title: '试卷模板列表' },
+            meta: { requiresAuth: true, title: '试卷模板列-表' },
+          },
+        ],
+      },
+      {
+        path: 'exam-paper',
+        name: 'ExamPaper',
+        meta: { title: '试卷' },
+         // 直接指向试卷模板列表
+         component: EmptyRouterView,
+         redirect: { name: 'ExamPaperList' }, // ✅ 自动跳到列表页
+        children: [
+          {
+            path: 'detail/:id',
+            name: 'ExamPaperDetail',
+            component: () => import('@/views/admin/ExamPaper/Detail.vue'),
+            meta: { title: '试卷详情' },
+          },
+      
+                    {
+            path: 'list',
+            name: 'ExamPaperList',
+            component: () => import('@/views/admin/ExamPaper/List.vue'),
+            meta: { title: '试卷列表' },
           },
         ],
       },

@@ -1,3 +1,4 @@
+import './http'; // 只需引入一次，就覆盖了全局 fetch
 import { createApp } from 'vue'
 import App from './App.vue'
 import './assets/main.css'  // Import Tailwind CSS styles
@@ -7,8 +8,5 @@ const app = createApp(App)
 app.use(router)
 app.mount('#app')
 
-// import { createApp } from 'vue'
-// import App from './App.vue'
-
-// createApp(App).mount('#app')
+ 
  

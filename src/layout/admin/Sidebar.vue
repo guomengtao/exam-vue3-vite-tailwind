@@ -17,11 +17,11 @@
 
         <!-- 问卷操作菜单 -->
         <li>
-          <div class="px-4 py-2 text-xs text-gray-500 uppercase tracking-wide">问卷操作</div>
+          <div class="px-4 py-2 text-xs text-gray-500 uppercase tracking-wide">试卷操作</div>
           <ul class="space-y-1 pl-2">
             <SidebarLink icon="Upload" text="导入问卷" to="#" />
 
-            <!-- ✅ 原始写法：新增问卷 -->
+            <!-- ✅ 原始写法：新增试卷模版 -->
             <li>
               <RouterLink
                 to="/admin/exam-template/create"
@@ -29,12 +29,13 @@
                 active-class="bg-gray-100 font-semibold"
               >
                 <FilePlus class="w-4 h-4 mr-2 text-gray-500" />
-                新增问卷
+                新增试卷
               </RouterLink>
             </li>
+            
 
-            <SidebarLink icon="Files" text="问卷模板" to="/admin/exam-template/list" />
-            <SidebarLink icon="ListChecks" text="问卷管理" to="#" />
+            <SidebarLink icon="Files" text="试卷模板" to="/admin/exam-template/list" />
+            <SidebarLink icon="ListChecks" text="试卷管理" to="/admin/exam-paper/list" />
             <SidebarLink icon="UserPlus" text="导入用户" to="#" />
             <SidebarLink icon="UserPlus" text="添加用户" to="admin/exam-template/create" />
             <SidebarLink icon="Users" text="用户管理" to="#" />
