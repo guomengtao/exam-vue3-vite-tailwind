@@ -49,8 +49,8 @@ const handleLogin = async () => {
 
     const data = await response.json()
 
-    if (response.ok && data.token) {
-      localStorage.setItem('token', data.token) // ✅ 注意 key 为 token，和路由守卫一致
+    if (response.ok && data.data.token) {
+      localStorage.setItem('token', data.data.token) // ✅ 注意 key 为 token，和路由守卫一致
       router.push({ name: 'AdminIndex' })       // ✅ 登录后跳转首页
     } else {
       error.value = data.message || '登录失败，请检查用户名或密码'
