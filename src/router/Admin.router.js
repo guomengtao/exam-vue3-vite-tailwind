@@ -15,7 +15,7 @@ export default [
   {
     path: '/upload',
     name: 'upload',
-    component: () => import('@/views/ImagePic.vue'),
+    component: () => import('@/views/ImageCropperPage.vue'),
   },
   {
     path: '/admin',

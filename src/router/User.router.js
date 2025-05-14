@@ -14,7 +14,7 @@ export default [
   {
     path: '/exam/result/:record_id',
     name: 'UserExamPaperResult',
-    component: () => import('@/views/user/ExamPaper/Result.vue'),
+    component: () => import('@/views/user/ExamPaper/ResultFull.vue'),
     meta: { 
       title: '试卷得分',
       layout: UserLayout  // 直接使用导入的布局组件

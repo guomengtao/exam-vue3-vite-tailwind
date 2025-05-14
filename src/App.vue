@@ -1,7 +1,7 @@
 <!-- src/App.vue -->
 <template>
   <router-view />
-  <p>d9999</p>
+  <p>App.vue 已经加载成功!</p>
 </template>
 
 <script setup>

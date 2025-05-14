@@ -17,8 +17,9 @@
       </div>
 
       <div class="exam-meta">
-        <span>总分：{{ paper.total_score }}分</span>
-        <span>剩余时间：{{ formattedTime }}</span>
+        <span>满分：{{ paper.total_score }}分</span>
+        <span>答题用时：{{ durationText }}</span>
+        <span v-if="paper.time_limit !== 0">剩余时间：{{ formattedTime }}</span>
         <span @click="resetExam" class="text-sm text-gray-400 cursor-pointer hover:underline ml-auto">
           重填
         </span>
@@ -37,6 +38,7 @@
         v-for="(question, index) in paper.questions" 
         :key="question.id" 
         class="question-card"
+        :ref="index === 0 ? 'firstQuestion' : null"
       >
         <h3>{{ index + 1 }}. {{ question.title }}（{{ question.score }}分）</h3>
 
@@ -59,7 +61,6 @@
               :name="'q_' + question.id"
               :value="optIndex"
               v-model="answers[question.id].answer"
-              required
             />
             <span class="option-letter">{{ String.fromCharCode(65 + optIndex) }}.</span>
             {{ option }}
@@ -110,8 +111,13 @@
       </div>
 
       <!-- 提交按钮 -->
-      <button type="submit" :disabled="isSubmitting" class="submit-btn">
-        {{ isSubmitting ? '提交中...' : '提交试卷' }}
+      <button
+        type="submit"
+        :disabled="isSubmitting"
+        class="submit-btn"
+      >
+        <span class="loader" v-if="isSubmitting" />
+        {{ isSubmitting ? '正在提交，请稍候...' : '提交试卷' }}
       </button>
     </form>
   </div>
@@ -233,6 +239,22 @@
 .mt-4 {
   margin-top: 1rem;
 }
+.loader {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #fff;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 </style>
 
 <script setup>
@@ -268,8 +290,25 @@ const storage = {
 }
 
 // 学生姓名与学号
-const username = ref(storage.get('username') || '')
-const userId = ref(storage.get('userId') || '')
+const _username = ref(storage.get('username') || '')
+const _userId = ref(storage.get('userId') || '')
+
+// 只在有效字符串时存储姓名和学号
+const username = ref(_username.value)
+watch(username, (val) => {
+  const trimmed = String(val).trim()
+  if (trimmed && trimmed.length <= 50) {
+    storage.set('username', trimmed)
+  }
+})
+
+const userId = ref(_userId.value)
+watch(userId, (val) => {
+  const trimmed = String(val).trim()
+  if (trimmed && trimmed.length <= 50) {
+    storage.set('userId', trimmed)
+  }
+})
 
 // 试卷数据
 const paper = ref({
@@ -278,14 +317,18 @@ const paper = ref({
   title: '加载中...',
   questions: [],
   total_score: 0,
-  time_limit: 60,
+  time_limit: 0,
   cover_image: ''
 })
 
 // 用户答案
 const answers = ref({})
 const isSubmitting = ref(false)
-const remainingSeconds = ref(paper.value.time_limit * 60)
+const remainingSeconds = ref(Number(storage.get('remainingTime')) || 0)
+
+// 记录开始时间戳，持久化到 localStorage
+const startTimestamp = ref(Number(storage.get('startTimestamp')) || Date.now())
+storage.set('startTimestamp', startTimestamp.value)
 
 // 获取当前用户UUID
 const getCurrentUserUUID = () => {
@@ -304,6 +347,9 @@ const formattedTime = computed(() => {
   return `${mins}:${secs.toString().padStart(2, '0')}`
 })
 
+// 替换 durationText 由 computed 改为 ref
+const durationText = ref('')
+
 // 获取试卷数据
  const fetchPaper = async () => {
   try {
@@ -317,7 +363,8 @@ const formattedTime = computed(() => {
     if (data.code === 200) {
       paper.value = {
         ...data.data,
-        questions: JSON.parse(data.data.questions || '[]')
+        questions: JSON.parse(data.data.questions || '[]'),
+        time_limit: Number(data.data.time_limit) || 0
       }
 
       // 初始化答案结构
@@ -337,11 +384,19 @@ const formattedTime = computed(() => {
         // 恢复多选题答案为数组格式
         for (const qid in savedAnswers) {
           if (!answers.value[qid]) answers.value[qid] = { answer: null, score: 0 };
-          answers.value[qid].answer = savedAnswers[qid].answer
+          if (paper.value.questions.find(q => q.id === qid && q.type === 'multi')) {
+            answers.value[qid].answer = Array.isArray(savedAnswers[qid].answer) ? savedAnswers[qid].answer : []
+          } else {
+            answers.value[qid].answer = savedAnswers[qid].answer
+          }
         }
       }
 
-      remainingSeconds.value = (data.data.time_limit || 60) * 60
+      remainingSeconds.value = Number(storage.get('remainingTime')) || paper.value.time_limit * 60
+
+      if (paper.value.time_limit === 0) {
+        clearInterval(timer)
+      }
     } else {
       alert('加载试卷失败，状态码不为200');
     }
@@ -353,22 +408,59 @@ const formattedTime = computed(() => {
 
 // 提交答案
 const submitAnswers = async () => {
-  // 校验姓名学号
-  if (!(username.value && typeof username.value === 'string' && username.value.trim()) || 
-      !(userId.value && typeof userId.value === 'string' && userId.value.trim())) {
-    alert('请填写完整的姓名和学号！')
+  if (isSubmitting.value) return;
+  isSubmitting.value = true;
+
+  const safeUsername = String(username.value).trim().slice(0, 50)
+  const safeUserId = String(userId.value).trim().slice(0, 50)
+
+  if (!safeUsername || !safeUserId) {
+    alert('请填写完整的姓名和学号')
+    isSubmitting.value = false
     return
   }
 
-  // 强制转换为字符串
-  const safeUsername = username.value.trim()
-  const safeUserId = userId.value.trim()
+  if (safeUsername.length > 50 || safeUserId.length > 50) {
+    isSubmitting.value = false
+    return
+  }
 
-  isSubmitting.value = true
   storage.set('username', safeUsername)
   storage.set('userId', safeUserId)
 
+  // 检查未作答题目
+  const unansweredQuestions = paper.value.questions.filter(q => {
+    const a = answers.value[q.id]?.answer
+    return a === null || (Array.isArray(a) && a.length === 0)
+  })
+
+  if (unansweredQuestions.length > 0) {
+    const questionNumbers = unansweredQuestions.map((q, idx) => idx + 1)
+    alert(`以下题目未作答: ${unansweredQuestions.map(q => paper.value.questions.indexOf(q) + 1).join(', ')}，请完成所有题目后再提交。`)
+    isSubmitting.value = false
+    return
+  }
+
   try {
+    // 自动评分
+    let totalScore = 0
+    paper.value.questions.forEach(q => {
+      const userAnswer = answers.value[q.id]?.answer
+      const correctMask = q.correct_answer_bitmask
+
+      if (q.type === 'single') {
+        if ((1 << userAnswer) === correctMask) totalScore += q.score
+      } else if (q.type === 'multi') {
+        const userMask = Array.isArray(userAnswer) ? userAnswer.reduce((sum, i) => sum | (1 << i), 0) : 0
+        if (userMask === correctMask) totalScore += q.score
+      } else if (q.type === 'judge') {
+        if ((userAnswer === 'true' && correctMask === 1) ||
+            (userAnswer === 'false' && correctMask === 0)) {
+          totalScore += q.score
+        }
+      }
+    })
+
     const validAnswers = {}
     for (const qid in answers.value) {
       if (answers.value[qid].answer !== null) {
@@ -382,10 +474,15 @@ const submitAnswers = async () => {
     const submission = {
       uuid: getCurrentUserUUID(),
       exam_id: paper.value.id,
+      exam_uuid: paper.value.uuid,
       username: safeUsername,
       user_id: safeUserId,
-      answers: validAnswers
+      answers: validAnswers,
+      score: totalScore,
+      duration: Math.floor((Date.now() - startTimestamp.value) / 1000),
     }
+
+    console.log('提交时长（秒）:', submission.duration)
 
     const res = await fetch(`${apiBaseUrl}/api/user/answer`, {
       method: 'POST',
@@ -406,6 +503,11 @@ const submitAnswers = async () => {
       path: `/exam/result/${result.record_id}`,
       query: { paper_uuid: paper.value.uuid }
     })
+    storage.remove('examAnswers')
+    storage.remove('username')
+    storage.remove('userId')
+    storage.remove('remainingTime')
+    storage.remove('startTimestamp')
 
   } catch (err) {
     console.error('提交出错:', err)
@@ -421,31 +523,44 @@ watch(answers, (newVal) => {
   console.log('当前答题状态:', JSON.stringify(newVal, null, 2))
 }, { deep: true })
 
-// 监视 username 和 userId 实时保存到 localStorage
-watch(username, val => storage.set('username', val))
-watch(userId, val => storage.set('userId', val))
-
 // 清空试卷答题记录
 const resetExam = () => {
   if (confirm('确定要清空所有答题记录并重新开始吗？')) {
     storage.remove('examAnswers')
     storage.remove('username')
     storage.remove('userId')
+    storage.remove('remainingTime')
+    storage.remove('startTimestamp')
     window.location.reload()
   }
 }
 
 // 倒计时逻辑
 let timer
-onMounted(() => {
-  fetchPaper()
-  timer = setInterval(() => {
-    if (remainingSeconds.value > 0) {
-      remainingSeconds.value--
+onMounted(async () => {
+  await fetchPaper()
+  if (paper.value.time_limit !== 0) {
+    if (paper.value.time_limit && Number(paper.value.time_limit) > 0) {
+      remainingSeconds.value = Number(storage.get('remainingTime')) || Number(paper.value.time_limit) * 60
     } else {
-      clearInterval(timer)
-      submitAnswers()
+      remainingSeconds.value = 0
     }
+    timer = setInterval(() => {
+      if (remainingSeconds.value > 0) {
+        remainingSeconds.value--
+        storage.set('remainingTime', remainingSeconds.value)
+      } else {
+        clearInterval(timer)
+        storage.remove('remainingTime')
+        submitAnswers()
+      }
+    }, 1000)
+  }
+  setInterval(() => {
+    const durationSeconds = Math.floor((Date.now() - startTimestamp.value) / 1000)
+    const mins = Math.floor(durationSeconds / 60)
+    const secs = durationSeconds % 60
+    durationText.value = `${mins}分${secs.toString().padStart(2, '0')}秒`
   }, 1000)
 })
 

@@ -27,9 +27,10 @@
         <h1 class="text-2xl font-bold mb-2">{{ paperData.title }}</h1>
         <div class="result-info-row">
           <span>姓名：{{ username }}　学号：{{ userId }}</span>
-          <span class="final-score-banner">总得分：{{ resultData.total_score }}分</span>
-          <span>总分: {{ paperData.total_score }}分</span>
+          <span class="final-score-banner">总得分：{{ resultData.score }}分</span>
+          <span>满分: {{ paperData.total_score }}分</span>
           <span>提交时间: {{ formatTime(resultData.created_at) }}</span>
+          <span>用时: {{ resultData.duration }}秒</span>
         </div>
       </div>
 
@@ -60,6 +61,40 @@
               <span v-if="isOptionSelected(question, optIndex)" class="user-answer-tag">你的选择</span>
               <span v-if="isCorrectOption(question, optIndex)" class="correct-answer-tag">正确答案</span>
             </div>
+          </div>
+
+          <div v-if="question.correct_answer !== null && question.correct_answer !== undefined">
+            <p class="correct-answer-display">
+              正确答案参考：
+              <span>
+                {{
+                  question.correct_answer instanceof Array
+                    ? question.correct_answer.map(i => String.fromCharCode(65 + i)).join(', ')
+                    : String.fromCharCode(65 + question.correct_answer)
+                }}
+              </span>
+            </p>
+          </div>
+
+          <div v-if="resultData.answers && resultData.answers[question.id]">
+            <p class="user-answer-display">
+              你的答案：
+              <span>
+                {{
+                  (() => {
+                    const userAns = resultData.answers[question.id].user_answer;
+                    if (userAns === null || userAns === undefined) return '未作答';
+                    if (Array.isArray(userAns)) {
+                      return userAns.map(i => String.fromCharCode(65 + i)).join(', ');
+                    }
+                    return String.fromCharCode(65 + userAns);
+                  })()
+                }}
+              </span>
+            </p>
+            <p class="answer-status" :class="{'correct': isAnswerCorrect(question), 'incorrect': !isAnswerCorrect(question)}">
+              状态：{{ getAnswerStatusText(question) }}
+            </p>
           </div>
 
           <!-- 得分和解析 -->
@@ -221,7 +256,6 @@
   content: "⚠️";
 }
 
-/* 结果信息一行显示 */
 .result-info-row {
   display: flex;
   flex-wrap: wrap;
@@ -234,7 +268,6 @@
   padding-top: 10px;
 }
 
-/* 修改后的 final-score-banner 样式 */
 .final-score-banner {
   font-size: 20px;
   font-weight: bold;
@@ -242,9 +275,34 @@
 }
 
 .student-info {
-  /* margin-top: 10px;  删除margin-top以融入result-info-row */
   color: #555;
   font-size: 15px;
+}
+
+.correct-answer-display {
+  margin-top: 8px;
+  font-size: 14px;
+  color: #888;
+}
+
+.user-answer-display {
+  margin-top: 4px;
+  font-size: 14px;
+  color: #555;
+}
+
+.answer-status {
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.answer-status.correct {
+  color: #4caf50;
+}
+
+.answer-status.incorrect {
+  color: #f44336;
 }
 
 /* 其他样式保持不变... */
@@ -253,7 +311,7 @@
   
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
@@ -266,6 +324,22 @@ const paperData = ref(null)
 const resultData = ref(null)
 const loading = ref(true)
 const error = ref(null)
+
+// 将correct_answer_bitmask转为数组
+const bitmaskToArray = (bitmask) => {
+  if (bitmask === undefined || bitmask === null) return null
+  const arr = []
+  let mask = Number(bitmask)
+  let index = 0
+  while (mask > 0) {
+    if ((mask & 1) === 1) {
+      arr.push(index)
+    }
+    mask = mask >> 1
+    index++
+  }
+  return arr
+}
 
 // 获取试卷数据
 const fetchPaperData = async () => {
@@ -316,14 +390,35 @@ const fetchData = async () => {
         ...q,
         id: String(q.id),
         options: q.options || [],
-        correct_answer: normalizeAnswer(q.correct_answer, q.type),
+        correct_answer: q.correct_answer !== undefined && q.correct_answer !== null
+          ? normalizeAnswer(q.correct_answer, q.type)
+          : (q.correct_answer_bitmask !== undefined && q.correct_answer_bitmask !== null
+            ? bitmaskToArray(q.correct_answer_bitmask)
+            : null),
         analysis: q.analysis || ""
       }))
     }
 
+    const normalizedAnswers = normalizeAnswers(resultRes.data.answers)
+
+    // 构造包含正确答案、用户答案及状态的结构
+    const answersWithStatus = {}
+    for (const q of paperData.value.questions) {
+      const userAnswer = normalizedAnswers[q.id]?.answer ?? null
+      const questionCorrectAnswer = q.correct_answer
+      const isCorrect = checkAnswerCorrect(userAnswer, questionCorrectAnswer, q.type)
+      answersWithStatus[q.id] = {
+        answer: normalizedAnswers[q.id]?.answer ?? null,
+        user_answer: normalizedAnswers[q.id]?.answer ?? null,
+        correct_answer: questionCorrectAnswer,
+        is_correct: isCorrect,
+        score: isCorrect ? normalizedAnswers[q.id]?.score ?? 0 : 0
+      }
+    }
+
     resultData.value = {
       ...resultRes.data,
-      answers: normalizeAnswers(resultRes.data.answers)
+      answers: answersWithStatus
     }
     resultData.value.user_uuid = resultRes.data.user_uuid || ''
 
@@ -359,6 +454,23 @@ const normalizeAnswers = (answers) => {
   return normalized
 }
 
+const checkAnswerCorrect = (userAnswer, correctAnswer, type) => {
+  if (userAnswer === undefined || correctAnswer === undefined || userAnswer === null || correctAnswer === null) return false
+
+  if (type === 'multi') {
+    const userAnsSet = Array.isArray(userAnswer) ? new Set(userAnswer) : new Set()
+    const correctAnsSet = Array.isArray(correctAnswer) ? new Set(correctAnswer) : new Set()
+
+    if (userAnsSet.size !== correctAnsSet.size) return false
+    for (const ans of userAnsSet) {
+      if (!correctAnsSet.has(ans)) return false
+    }
+    return true
+  }
+
+  return userAnswer === correctAnswer
+}
+
 const formatTime = (timestamp) => {
   const date = new Date(timestamp * 1000)
   const year = date.getFullYear()
@@ -371,7 +483,7 @@ const formatTime = (timestamp) => {
 
 const isOptionSelected = (question, optIndex) => {
   if (!resultData.value?.answers) return false
-  const answer = resultData.value.answers[question.id]?.answer
+  const answer = resultData.value.answers[question.id]?.user_answer
   if (answer === undefined || answer === null) return false
   
   if (question.type === 'multi') {
@@ -392,7 +504,6 @@ const getQuestionScore = (question) => {
   const raw = resultData.value?.answers?.[question.id]?.score ?? 0
   return isAnswerCorrect(question) ? raw : 0
 }
-import { computed } from 'vue'
 
 const username = computed(() => resultData.value?.username || '')
 const userId = computed(() => resultData.value?.user_id || '')
@@ -415,7 +526,7 @@ const getOptionClass = (question, optIndex) => {
 }
 
 const isAnswerCorrect = (question) => {
-  const userAnswer = resultData.value?.answers?.[question.id]?.answer
+  const userAnswer = resultData.value?.answers?.[question.id]?.user_answer
   const correctAnswer = question.correct_answer
   
   if (userAnswer === undefined || correctAnswer === undefined) return false
