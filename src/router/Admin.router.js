@@ -40,7 +40,7 @@ export default [
           {
             path: 'create',
             name: 'ExamTemplateCreate',
-            component: () => import('@/views/admin/ExamTemplate/Create.vue'),
+            component: () => import('@/views/admin/ExamTemplate/EditWithCreate.vue'),
             meta: { requiresAuth: true, title: '创建试卷模板' },
           },
           {
@@ -52,7 +52,7 @@ export default [
           {
             path: 'edit/:id',
             name: 'ExamTemplateEdit',
-            component: () => import('@/views/admin/ExamTemplate/Edit.vue'),
+            component: () => import('@/views/admin/ExamTemplate/EditWithCreate.vue'),
             meta: { title: '试卷模板编辑' },
           },
           {

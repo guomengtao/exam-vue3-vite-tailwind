@@ -103,7 +103,7 @@
               </button>
               <img
                 :src="q.image_url"
-                class="w-[320px] h-[180px] object-cover rounded shadow border border-gray-200"
+                class="w-[320px] h-[180px] object-cover rounded-xl shadow-lg border border-gray-200"
               />
             </div>
 
@@ -139,7 +139,7 @@
                         </button>
                         <img
                           :src="q.option_images[idx]"
-                          class="w-[320px] h-[180px] object-cover rounded shadow border border-gray-200"
+                          class="w-[320px] h-[180px] object-cover rounded-xl shadow-lg border border-gray-200"
                         />
                       </div>
                     </div>
@@ -230,14 +230,18 @@ const form = ref({
   title: '',
   description: '',
   cover_image: '',
-  questions: []
+  questions: [],
+  total_score: 0
 })
 const loading = ref(true)
 const error = ref('')
 
-// 计算总分
+// 计算总分（更安全，确保分数未填不会出错）
 const totalScore = computed(() => {
-  return form.value.questions.reduce((sum, q) => sum + (Number(q.score) || 0), 0)
+  return form.value.questions.reduce((sum, q) => {
+    const score = Number(q.score)
+    return sum + (isNaN(score) ? 0 : score)
+  }, 0)
 })
 
 // 更新总分（当题目分数变化时）
@@ -351,6 +355,7 @@ function fetchDetail() {
 function handleSubmit() {
   const submitData = {
     ...form.value,
+    total_score: totalScore.value || 1,
     questions: form.value.questions.map(q => ({
       id: q.id,
       type: q.type,
@@ -363,17 +368,23 @@ function handleSubmit() {
     }))
   }
 
-  fetch(`${baseUrl}/api/exam_template`, {
-    method: 'PUT',
+  const method = id ? 'PUT' : 'POST'
+  const url = `${baseUrl}/api/exam_template`
+
+  fetch(url, {
+    method,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(submitData)
   })
     .then(res => res.json())
     .then(data => {
       if (data.code === 200) {
-        // 移除 setTimeout 包裹 alert，改为页面跳转前提示
         alert('保存成功');
-        router.push(`/admin/exam-template/detail/${form.value.id}`);
+        if (data.data?.id) {
+          router.push(`/admin/exam-template/detail/${data.data.id}`);
+        } else {
+          router.push('/admin/exam-template/list');
+        }
       } else {
         alert(`保存失败：${data.msg}`);
       }
@@ -385,7 +396,24 @@ function handleSubmit() {
 
 onMounted(() => {
   if (!id) {
-    error.value = '缺少试卷模板 ID'
+    // 创建模式：初始化空数据
+    form.value = {
+      id: Date.now(),
+      title: '',
+      description: '',
+      cover_image: '',
+      questions: [
+        {
+          id: Date.now() + 1,
+          type: 'single',
+          title: '',
+          score: 0,
+          options: ['', '', '', ''],
+          image_url: '',
+          correct_answer_bitmask: 0
+        }
+      ]
+    }
     loading.value = false
   } else {
     fetchDetail()
