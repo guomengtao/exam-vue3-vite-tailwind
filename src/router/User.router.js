@@ -3,6 +3,24 @@ import UserLayout from '@/layout/user/UserLayout.vue'
 
 export default [
   {
+    path: '/test',
+    name: 'UserExamPaperDetailTest',
+     component: () => import('@/components/ImageCropper.vue'),
+
+    meta: { 
+      title: '试卷详情',
+    }
+  },
+  {
+    path: '/images-base-upload',
+    name: 'UserImagesBaseUpload',
+     component: () => import('@/views/ImageBaseUpload.vue'),
+
+    meta: { 
+      title: '试卷详情',
+    }
+  },
+  {
     path: '/exam/detail/:id',
     name: 'UserExamPaperDetail',
     component: () => import('@/views/user/ExamPaper/Detail.vue'),
@@ -19,5 +37,6 @@ export default [
       title: '试卷得分',
       layout: UserLayout  // 直接使用导入的布局组件
     }
+    
   },
 ]

@@ -4,9 +4,11 @@ const originalFetch = window.fetch;
 window.fetch = async function (input, init = {}) {
   const token = localStorage.getItem('token');
 
+  const isFormData = init.body instanceof FormData;
+
   init.headers = {
     ...(init.headers || {}),
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 

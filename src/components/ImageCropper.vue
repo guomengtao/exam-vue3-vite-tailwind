@@ -1,10 +1,10 @@
 <template>
   <div>
-    <button class="trigger-button" @click="openCropper">图</button>
+    <button class="trigger-button" type="button" @click="openCropper">图</button>
     <input type="file" ref="fileInput" @change="handleFileChange" accept="image/*" style="display: none;" />
     <div v-if="visible" class="modal">
       <div>
-        <button class="close-button" @click="visible = false">关闭</button>
+        <button type="button" class="close-button" @click="visible = false">关闭</button>
         <!-- 原始组件内容全部移入这里 -->
         <!-- 原内容起始 -->
         <div>
@@ -15,7 +15,7 @@
               <div class="cropper-container">
                 <img ref="image" src="" alt="Preview" />
               </div>
-              <button class="reselect-button" @click="triggerFileInput">重新选择</button>
+              <button type="button" class="reselect-button" @click="triggerFileInput">重新选择</button>
             </div>
 
             <!-- 中列：竖线 -->
@@ -23,7 +23,9 @@
 
             <!-- 右列：预览图 + 文字 -->
             <div class="preview-box-container">
-              <div class="preview-box"></div>
+              <div class="preview-box">
+                <img :src="croppedImage" v-if="croppedImage" />
+              </div>
               <div class="preview-label">预览图片</div>
             </div>
           </div>
@@ -33,16 +35,11 @@
             <p class="upload-tip-inline">
               请选择图片上传：大小800 * 450像素支持JPG、PNG等格式，图片需小于2M
             </p>
-            <button class="upload-button" @click="uploadCroppedImage">
+            <button type="button" class="upload-button" @click="uploadCroppedImage">
               上传图片
             </button>
           </div>
 
-          <!-- 预览区域 -->
-          <div v-if="croppedImage" class="preview">
-            <h3>裁剪结果：</h3>
-            <img :src="croppedImage" alt="Cropped" />
-          </div>
         </div>
         <!-- 原内容结束 -->
       </div>
@@ -101,38 +98,7 @@ const uploadImage = async (e) => {
   reader.readAsDataURL(file);
 };
 
-const initCropper = () => {
-  if (cropper) cropper.destroy();
-  cropper = new Cropper(image.value, {
-    aspectRatio: 16 / 9,
-    viewMode: 1,
-    autoCropArea: 1,
-    preview: '.preview-box',
-    ready() {
-      const cropBoxData = cropper.getCropBoxData();
-      const containerData = cropper.getContainerData();
-      const imageData = cropper.getImageData();
-      // 判断纵向过长
-      if (imageData.height / imageData.width > 1.2) {
-        cropper.setCropBoxData({
-          width: containerData.width,
-          height: containerData.width / 16 * 9,
-          left: 0,
-          top: (containerData.height - (containerData.width / 16 * 9)) / 2,
-        });
-      } else {
-        cropper.setCropBoxData({
-          height: containerData.height,
-          width: containerData.height * 16 / 9,
-          top: 0,
-          left: (containerData.width - (containerData.height * 16 / 9)) / 2,
-        });
-      }
-    }
-  });
-};
-
-const cropImage = () => {
+const updatePreview = () => {
   if (!cropper) return;
   const canvas = cropper.getCroppedCanvas();
   if (canvas) {
@@ -140,14 +106,30 @@ const cropImage = () => {
   }
 };
 
+const initCropper = () => {
+  if (cropper) cropper.destroy();
+  cropper = new Cropper(image.value, {
+    aspectRatio: 16 / 9,
+    viewMode: 1,
+    autoCropArea: 1,
+    ready() {
+      updatePreview();
+    },
+    crop() {
+      updatePreview();
+    }
+  });
+};
+
+const cropImage = () => {
+  if (!cropper) return null;
+  return cropper.getCroppedCanvas();
+};
+
 const uploadCroppedImage = async () => {
   if (!cropper) return;
 
-  // 获取裁剪后的图片 canvas，确保其已正确生成
-  const canvas = cropper.getCroppedCanvas({
-    width: 800,
-    height: 450
-  });
+  const canvas = cropImage();
 
   if (!canvas) {
     console.error('裁剪失败，无法生成图片');
@@ -232,21 +214,22 @@ const triggerFileInput = () => {
   height: 180px;
 }
 
+/* 预览框按16:9比例调整 */
 .preview-box {
   width: 180px;
-  height: 180px;
   border: 1px solid #ddd;
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
 .preview-box img {
-  max-height: 100%;
-  max-width: 100%;
+  width: 100%;
+  height: auto;
+  display: block;
   object-fit: contain;
 }
 

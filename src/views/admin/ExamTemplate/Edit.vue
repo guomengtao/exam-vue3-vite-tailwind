@@ -14,19 +14,10 @@
     <div v-else-if="error" class="text-red-600">请求失败：{{ error }}</div>
 
     <form v-else @submit.prevent="handleSubmit" class="space-y-4 bg-white p-6 shadow rounded">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-1 gap-4">
         <div>
           <label class="block text-sm font-medium">标题</label>
           <input v-model="form.title" type="text" class="form-input w-full" required />
-        </div>
-        <div>
-          <label class="block text-sm font-medium">总分</label>
-          <input 
-            :value="totalScore" 
-            type="number" 
-            class="form-input w-full bg-gray-100" 
-            readonly
-          />
         </div>
       </div>
 
@@ -36,13 +27,9 @@
       </div>
 
       <div>
-        <label class="block text-sm font-medium">封面图片链接</label>
-        <input v-model="form.cover_image" type="text" class="form-input w-full" />
-        <img v-if="form.cover_image" :src="form.cover_image" class="w-48 mt-2 rounded shadow" />
-      </div>
-
-      <div>
-        <h2 class="text-xl font-semibold mb-2">题目列表</h2>
+        <h2 class="text-xl font-semibold mb-2">
+          题目列表（总分：{{ totalScore }}）
+        </h2>
 
         <div v-if="form.questions.length === 0" class="text-gray-500 py-4 text-center">
           暂无题目，请点击下方"添加题目"按钮
@@ -51,74 +38,136 @@
         <div
           v-for="(q, index) in form.questions"
           :key="q.id || index"
-          class="border-t pt-4 mt-4 space-y-2 relative"
+          :class="index % 2 === 0 ? 'bg-gray-50' : 'bg-white'"
+          class="rounded-lg p-4"
         >
-          <button
-            type="button"
-            @click="removeQuestion(index)"
-            class="absolute top-2 right-0 text-red-600 hover:text-red-800 delete-btn"
-            title="删除此题"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </button>
+          <div class="border-t pt-4 mt-4 space-y-2 relative">
+            <button
+              type="button"
+              @click="removeQuestion(index)"
+              class="absolute top-2 right-0 text-red-600 hover:text-red-800 delete-btn"
+              title="删除此题"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium">题目 {{ index + 1 }}</label>
-              <input v-model="q.title" type="text" class="form-input w-full" />
+            <!-- 表头 -->
+            <div class="grid grid-cols-[100px_1fr_80px_100px] gap-4 items-center mb-1 text-sm text-gray-600 font-medium">
+              <div>类型</div>
+              <div>题目</div>
+              <div>分值</div>
+              <div>题图</div>
             </div>
-            <div>
-              <label class="block text-sm font-medium">类型</label>
-              <select v-model="q.type" class="form-select w-full" @change="handleTypeChange(q)">
-                <option value="single">单选题</option>
-                <option value="multi">多选题</option>
-                <option value="judge">判断题</option>
-              </select>
+            <!-- 题目行 -->
+            <div class="grid grid-cols-[100px_1fr_80px_100px] gap-4 items-center">
+              <div class="w-[100px]">
+                <select v-model="q.type" class="form-select w-full" @change="handleTypeChange(q)">
+                  <option value="single">单选题</option>
+                  <option value="multi">多选题</option>
+                  <option value="judge">判断题</option>
+                </select>
+              </div>
+              <div>
+                <input v-model="q.title" type="text" class="form-input w-full" :placeholder="`题目 ${index + 1}`" />
+              </div>
+              <div class="w-[80px]">
+                <input 
+                  v-model.number="q.score" 
+                  type="number" 
+                  min="0"
+                  class="form-input w-full" 
+                  @change="updateTotalScore"
+                />
+              </div>
+              <div class="w-[100px] flex items-center">
+                <ImageCropper
+                  :modelValue="q.image_url"
+                  @update:modelValue="val => q.image_url = val"
+                  :buttonIcon="'📷'"
+                  :previewWidth="320"
+                  :previewHeight="180"
+                  :buttonType="'button'"
+                />
+              </div>
             </div>
-            <div>
-              <label class="block text-sm font-medium">分值</label>
-              <input 
-                v-model.number="q.score" 
-                type="number" 
-                min="0"
-                class="form-input w-full" 
-                @change="updateTotalScore"
+            <div v-if="q.image_url" class="relative inline-block mt-2">
+              <button
+                type="button"
+                class="absolute -top-2 -right-2 w-5 h-5 bg-white text-red-600 hover:text-red-800 rounded-full text-xs flex items-center justify-center shadow"
+                @click="q.image_url = ''"
+                title="删除图片"
+              >
+                ×
+              </button>
+              <img
+                :src="q.image_url"
+                class="w-[320px] h-[180px] object-cover rounded shadow border border-gray-200"
               />
             </div>
-            <div>
-              <label class="block text-sm font-medium">题图链接</label>
-              <input v-model="q.image_url" type="text" class="form-input w-full" />
-              <img v-if="q.image_url" :src="q.image_url" class="w-32 mt-2" />
-            </div>
-          </div>
 
-          <div>
-            <label class="block text-sm font-medium">选项</label>
-            <ul class="space-y-1">
-              <li
-                v-for="(opt, idx) in q.options"
-                :key="idx"
-                class="flex items-center gap-2"
-              >
-                <input
-                  :type="q.type === 'multi' ? 'checkbox' : 'radio'"
-                  :name="`answer-${index}`"
-                  :value="opt"
-                  :checked="(q.correct_answer_bitmask & (1 << idx)) !== 0"
-                  @change="handleBitmaskChange(q, idx, $event)"
-                  :disabled="q.type === 'judge'"
-                />
-                <span class="option-letter">{{ String.fromCharCode(65 + idx) }}.</span>
-                <input
-                  v-model="q.options[idx]"
-                  type="text"
-                  class="form-input flex-1"
-                  :readonly="q.type === 'judge'"
-                />
-              </li>
-            </ul>
+            <div>
+              <label class="block text-sm font-medium">选项</label>
+              <ul class="space-y-1">
+                <li
+                  v-for="(opt, idx) in q.options"
+                  :key="idx"
+                  :class="idx % 2 === 0 ? 'bg-gray-100' : 'bg-white'"
+                  class="mb-4 p-3 rounded-md"
+                >
+                  <div class="space-y-1">
+                    <!-- 第一行：选择按钮 + 字母 + 图片 -->
+                    <div class="flex items-center gap-2">
+                      <input
+                        :type="q.type === 'multi' ? 'checkbox' : 'radio'"
+                        :name="`answer-${index}`"
+                        :value="opt"
+                        :checked="(q.correct_answer_bitmask & (1 << idx)) !== 0"
+                        @change="handleBitmaskChange(q, idx, $event)"
+                        :disabled="q.type === 'judge'"
+                      />
+                      <span class="option-letter">{{ String.fromCharCode(65 + idx) }}.</span>
+                      <div v-if="q.option_images?.[idx]" class="relative">
+                        <button
+                          type="button"
+                          class="absolute -top-2 -right-2 w-5 h-5 bg-white text-red-600 hover:text-red-800 rounded-full text-xs flex items-center justify-center shadow"
+                          @click="q.option_images[idx] = ''"
+                          title="删除图片"
+                        >
+                          ×
+                        </button>
+                        <img
+                          :src="q.option_images[idx]"
+                          class="w-[320px] h-[180px] object-cover rounded shadow border border-gray-200"
+                        />
+                      </div>
+                    </div>
+
+                    <!-- 第二行：输入 + 上传按钮 -->
+                    <div class="flex items-center gap-2">
+                      <input
+                        v-model="q.options[idx]"
+                        type="text"
+                        class="form-input flex-1"
+                        :readonly="q.type === 'judge'"
+                      />
+                      <ImageCropper
+                        :modelValue="q.option_images?.[idx]"
+                        @update:modelValue="val => {
+                          if (!q.option_images) q.option_images = [];
+                          q.option_images[idx] = val;
+                        }"
+                        :buttonIcon="'🖼️'"
+                        :previewWidth="120"
+                        :previewHeight="68"
+                        :buttonType="'button'"
+                      />
+                    </div>
+                  </div>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
 
@@ -170,6 +219,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import ImageCropper from '@/components/ImageCropper.vue'
 
 const baseUrl = import.meta.env.VITE_API_BASE_URL
 const route = useRoute()
@@ -308,7 +358,8 @@ function handleSubmit() {
       score: Number(q.score) || 0,
       options: q.options,
       image_url: q.image_url,
-      correct_answer_bitmask: q.correct_answer_bitmask || 0
+      correct_answer_bitmask: q.correct_answer_bitmask || 0,
+      option_images: q.option_images || [],
     }))
   }
 
@@ -320,10 +371,11 @@ function handleSubmit() {
     .then(res => res.json())
     .then(data => {
       if (data.code === 200) {
-        alert('保存成功')
-        router.push(`/admin/exam-template/detail/${form.value.id}`)
+        // 移除 setTimeout 包裹 alert，改为页面跳转前提示
+        alert('保存成功');
+        router.push(`/admin/exam-template/detail/${form.value.id}`);
       } else {
-        alert(`保存失败：${data.msg}`)
+        alert(`保存失败：${data.msg}`);
       }
     })
     .catch(err => {
