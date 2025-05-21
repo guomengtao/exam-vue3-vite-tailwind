@@ -25,9 +25,13 @@ router.beforeEach((to, from, next) => {
     return next('/admin');
   }
 
-  // 未登录访问需要权限的页面
+  // 未登录访问需要权限的页面，且当前页面不是登录页
   if (!token && to.meta.requiresAuth) {
-    return next(`/admin/login?redirect=${encodeURIComponent(to.fullPath)}`);
+    if (to.path !== '/admin/login' && from.path !== '/admin/login') {
+      return next(`/admin/login?redirect=${encodeURIComponent(to.fullPath)}`);
+    } else {
+      return next(false); // cancel redundant navigation to same page
+    }
   }
 
   // 其他情况放行

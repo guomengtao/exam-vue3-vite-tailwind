@@ -1,8 +1,10 @@
 // http.js
+const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081';
 const originalFetch = window.fetch;
 
 window.fetch = async function (input, init = {}) {
   const token = localStorage.getItem('token');
+  console.log('HTTP fetch token:', token);  // Debug token output
 
   const isFormData = init.body instanceof FormData;
 
@@ -12,20 +14,22 @@ window.fetch = async function (input, init = {}) {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
-  const response = await originalFetch(input, init);
+  console.log('HTTP fetch headers:', init.headers);  // Debug headers output
+
+  const url = typeof input === 'string' && input.startsWith('/') ? baseUrl + input : input;
+  const response = await originalFetch(url, init);
 
   if (response.status === 401) {
-    console.warn('token 已失效，强制跳转登录');
-    localStorage.removeItem('token'); // ✅ 删除 token
-    setTimeout(() => {
-      window.location.href = '/admin/login';
-    }, 100); // 稍微延迟，避免被组件 render 冲掉
-  }
-
-  // 可选统一处理，比如 token 失效跳转
-  if (response.status === 401) {
-    window.location.href = '/admin/login';
+    console.warn('token 已失效');
+    localStorage.removeItem('token');
+    if (window.location.pathname !== '/admin/login') {
+      setTimeout(() => {
+        window.location.href = '/admin/login';
+      }, 100);
+    }
   }
 
   return response;
 };
+
+export default window.fetch;

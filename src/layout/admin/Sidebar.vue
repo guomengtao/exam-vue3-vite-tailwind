@@ -3,42 +3,27 @@
     <div class="p-4 text-2xl font-bold border-b border-gray-300">后台管理</div>
     <nav class="mt-4">
       <ul class="space-y-2">
+
+
+ 
         <!-- 一级菜单项 -->
         <li>
-          <RouterLink
-            to="/admin"
-            class="flex items-center px-4 py-2 hover:bg-gray-100 transition-colors"
-            active-class="bg-gray-100 font-semibold"
-          >
-            <Home class="w-5 h-5 mr-3 text-gray-600" />
-            首页
-          </RouterLink>
+         <ul class="space-y-1 pl-2">
+          <SidebarLink icon="Home" text="首页" to="/admin/admin/index"  />
+          </ul>
         </li>
 
         <!-- 问卷操作菜单 -->
         <li>
           <div class="px-4 py-2 text-xs text-gray-500 uppercase tracking-wide">试卷操作</div>
           <ul class="space-y-1 pl-2">
-            <SidebarLink icon="Upload" text="导入问卷" to="#" />
-
-            <!-- ✅ 原始写法：新增试卷模版 -->
-            <li>
-              <RouterLink
-                to="/admin/exam-template/create"
-                class="flex items-center px-4 py-2 text-sm hover:bg-gray-100 rounded transition-colors"
-                active-class="bg-gray-100 font-semibold"
-              >
-                <FilePlus class="w-4 h-4 mr-2 text-gray-500" />
-                新增试卷
-              </RouterLink>
-            </li>
-            
-
+            <SidebarLink icon="Upload" text="导入问卷" to="/admin/im/im" />
+            <SidebarLink icon="FilePlus" text="新增试卷" to="/admin/exam-template/create" />
             <SidebarLink icon="Files" text="试卷模板" to="/admin/exam-template/list" />
             <SidebarLink icon="ListChecks" text="试卷管理" to="/admin/exam-paper/list" />
-            <SidebarLink icon="UserPlus" text="导入用户" to="#" />
-            <SidebarLink icon="UserPlus" text="添加用户" to="admin/exam-template/create" />
-            <SidebarLink icon="Users" text="用户管理" to="#" />
+            <SidebarLink icon="UserPlus" text="导入用户" to="/admin/admins/list" />
+            <SidebarLink icon="UserPlus" text="添加用户" to="/admin/admins/create" />
+            <SidebarLink icon="Users" text="用户管理" to="/admin/admins/list" />
           </ul>
         </li>
 
@@ -46,8 +31,8 @@
         <li>
           <div class="px-4 py-2 text-xs text-gray-500 uppercase tracking-wide">系统管理</div>
           <ul class="space-y-1 pl-2">
-            <SidebarLink icon="UserPlus" text="新增管理员" to="#" />
-            <SidebarLink icon="ShieldCheck" text="管理员管理" to="#" />
+            <SidebarLink icon="UserPlus" text="新增管理员" to="/admin/admins/list" />
+            <SidebarLink icon="ShieldCheck" text="管理员管理" to="/admin/admins/list" />
           </ul>
         </li>
       </ul>

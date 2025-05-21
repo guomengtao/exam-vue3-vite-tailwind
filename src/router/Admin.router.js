@@ -22,12 +22,27 @@ export default [
     name: 'Admin',
     component: () => import('@/layout/admin/AdminLayout.vue'),
     meta: { requiresAuth: true, title: '首页' },
+             // 直接指向试卷模板列表
+            // component: EmptyRouterView,
+             redirect: { name: 'AdminIndex' }, // ✅ 自动跳到列表页
     children: [
       {
         path: '', // 默认访问 /admin 时加载首页
         name: 'AdminIndex',
         component: () => import('@/views/admin/Index.vue'),
         // meta: { title: '首页' },
+      },
+      {
+        path: 'admin/index',  
+        name: 'AdminIndex',
+        component: () => import('@/views/admin/Index.vue'),
+        // meta: { title: '首页' },
+      },
+      {
+        path: 'change-password',
+        name: 'ChangePassword',
+        component: () => import('@/views/admin/Admin/ChangePassword.vue'),
+        meta: { title: '密码修改' },
       },
       {
         path: 'exam-template',
@@ -59,7 +74,7 @@ export default [
             path: 'list',
             name: 'ExamTemplateList',
             component: () => import('@/views/admin/ExamTemplate/List.vue'),
-            meta: { requiresAuth: true, title: '试卷模板列-表' },
+            meta: { requiresAuth: true, title: '试卷模板列表' },
           },
         ],
       },
@@ -84,6 +99,30 @@ export default [
             component: () => import('@/views/admin/ExamPaper/List.vue'),
             meta: { title: '试卷列表' },
           },
+        ],
+      },
+      {
+        path: 'admins',
+        name: 'admins',
+        meta: { title: '管理员' },
+         // 直接指向试卷模板列表
+         component: EmptyRouterView,
+         redirect: { name: 'AdminList' }, // ✅ 自动跳到列表页
+        children: [
+          {
+            path: 'detail/:id',
+            name: 'ExamPaperDetail',
+            component: () => import('@/views/admin/ExamPaper/Detail.vue'),
+            meta: { title: '试卷详情' },
+          },
+      
+             {
+            path: 'list',
+            name: 'AdminrList',
+            component: () => import('@/views/admin/Admin/List.vue'),
+            meta: { title: '管理员列表' },
+          },
+
         ],
       },
     ],
